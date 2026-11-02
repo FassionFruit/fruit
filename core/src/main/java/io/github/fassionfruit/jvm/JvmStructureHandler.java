@@ -1,0 +1,177 @@
+package io.github.fassionfruit.jvm;
+
+import io.github.fassionfruit.internal.NativeTypeMapper;
+import io.github.fassionfruit.internal.NativeValueConverter;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.List;
+
+public final class JvmStructureHandler {
+
+    private static final Linker LINKER = Linker.nativeLinker();
+
+    private JvmStructureHandler() {
+    }
+
+    public static <T> MemorySegment export(
+            Class<T> type,
+            T implementation,
+            Arena arena
+    ) {
+        if (implementation == null) {
+            throw new IllegalArgumentException(
+                    "Implementation must not be null"
+            );
+        }
+
+        MemoryLayout layout = JvmStructureLayout.create(type);
+        List<Method> methods = JvmStructureLayout.getMethods(type);
+
+        MemorySegment segment = arena.allocate(layout);
+
+        segment.set(
+                ValueLayout.ADDRESS,
+                layout.byteOffset(MemoryLayout.PathElement.groupElement("context")),
+                MemorySegment.NULL
+        );
+
+        for (Method method : methods) {
+            FunctionDescriptor descriptor =
+                    NativeTypeMapper.createJvmMethodDescriptor(method);
+
+            MethodHandle target = createTarget(
+                    implementation,
+                    method,
+                    descriptor,
+                    arena
+            );
+
+            MemorySegment stub = LINKER.upcallStub(
+                    target,
+                    descriptor,
+                    arena
+            );
+
+            long offset = layout.byteOffset(
+                    MemoryLayout.PathElement.groupElement(method.getName())
+            );
+
+            segment.set(ValueLayout.ADDRESS, offset, stub);
+        }
+
+        return segment;
+    }
+
+    private static MethodHandle createTarget(
+            Object implementation,
+            Method method,
+            FunctionDescriptor descriptor,
+            Arena arena
+    ) {
+        MethodHandle target;
+
+        try {
+            target = MethodHandles.lookup().findStatic(
+                    JvmStructureHandler.class,
+                    "invokeJvmMethod",
+                    MethodType.methodType(
+                            Object.class,
+                            Object.class,
+                            Method.class,
+                            Arena.class,
+                            Object[].class
+                    )
+            );
+        } catch (NoSuchMethodException | IllegalAccessException exception) {
+            throw new IllegalStateException(
+                    "Failed to create JVM method handle",
+                    exception
+            );
+        }
+
+        target = MethodHandles.insertArguments(
+                target,
+                0,
+                implementation,
+                method,
+                arena
+        );
+
+        target = MethodHandles.dropArguments(
+                target,
+                0,
+                MemorySegment.class
+        );
+
+        target = target.asCollector(
+                Object[].class,
+                method.getParameterCount()
+        );
+
+        return target.asType(toMethodType(descriptor));
+    }
+
+    private static Object invokeJvmMethod(
+            Object implementation,
+            Method method,
+            Arena arena,
+            Object[] nativeArguments
+    ) throws Throwable {
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Object[] arguments = new Object[parameterTypes.length];
+
+        for (int i = 0; i < parameterTypes.length; i++) {
+            arguments[i] = NativeValueConverter.fromNative(
+                    parameterTypes[i],
+                    nativeArguments[i]
+            );
+        }
+
+        Object result;
+
+        try {
+            result = method.invoke(implementation, arguments);
+        } catch (InvocationTargetException exception) {
+            throw exception.getCause();
+        }
+
+        return NativeValueConverter.toNative(
+                method.getReturnType(),
+                result,
+                arena
+        );
+    }
+
+    private static MethodType toMethodType(FunctionDescriptor descriptor) {
+        Class<?>[] parameterTypes = descriptor.argumentLayouts()
+                .stream()
+                .map(JvmStructureHandler::getCarrier)
+                .toArray(Class<?>[]::new);
+
+        Class<?> returnType = descriptor.returnLayout()
+                .<Class<?>>map(JvmStructureHandler::getCarrier)
+                .orElse(void.class);
+
+        return MethodType.methodType(returnType, parameterTypes);
+    }
+
+    private static Class<?> getCarrier(MemoryLayout layout) {
+        if (layout instanceof ValueLayout valueLayout) {
+            return valueLayout.carrier();
+        }
+
+        throw new IllegalArgumentException(
+                "Unsupported JVM structure layout: " + layout
+        );
+    }
+}

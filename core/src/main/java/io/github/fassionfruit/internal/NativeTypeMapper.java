@@ -36,6 +36,29 @@ public final class NativeTypeMapper {
         );
     }
 
+    public static FunctionDescriptor createJvmMethodDescriptor(Method method) {
+        FunctionDescriptor descriptor = createDescriptor(method);
+
+        MemoryLayout[] arguments = new MemoryLayout[
+                descriptor.argumentLayouts().size() + 1
+                ];
+
+        arguments[0] = ValueLayout.ADDRESS;
+
+        for (int i = 0; i < descriptor.argumentLayouts().size(); i++) {
+            arguments[i + 1] = descriptor.argumentLayouts().get(i);
+        }
+
+        if (descriptor.returnLayout().isEmpty()) {
+            return FunctionDescriptor.ofVoid(arguments);
+        }
+
+        return FunctionDescriptor.of(
+                descriptor.returnLayout().orElseThrow(),
+                arguments
+        );
+    }
+
     private static MemoryLayout map(Class<?> type) {
         if (type.isAnnotationPresent(NativeCallback.class)) {
             return ValueLayout.ADDRESS;

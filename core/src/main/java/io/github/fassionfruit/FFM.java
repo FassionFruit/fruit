@@ -1,14 +1,15 @@
 package io.github.fassionfruit;
 
 import io.github.fassionfruit.annotation.NativeLibrary;
+import io.github.fassionfruit.annotation.structure.JvmStructure;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 import io.github.fassionfruit.internal.NativeLoader;
+import io.github.fassionfruit.jvm.JvmStructureHandler;
 import io.github.fassionfruit.structure.NativeStructureHandler;
 import io.github.fassionfruit.structure.NativeStructureLayout;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.lang.reflect.Proxy;
 
 public final class FFM {
     private FFM() {
@@ -50,5 +51,31 @@ public final class FFM {
         );
 
         return NativeStructureHandler.create(type, segment);
+    }
+
+    public static <T> MemorySegment export(
+            Class<T> type,
+            T implementation,
+            Arena arena
+    ) {
+        if (!type.isInterface()) {
+            throw new IllegalArgumentException(
+                    type.getName() + " must be an interface"
+            );
+        }
+
+        if (!type.isAnnotationPresent(JvmStructure.class)) {
+            throw new IllegalArgumentException(
+                    type.getName() + " is missing @JvmStructure"
+            );
+        }
+
+        if (!type.isInstance(implementation)) {
+            throw new IllegalArgumentException(
+                    "Implementation must implement " + type.getName()
+            );
+        }
+
+        return JvmStructureHandler.export(type, implementation, arena);
     }
 }
