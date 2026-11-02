@@ -19,3 +19,15 @@ int test_player(Player* player) {
 
     return health;
 }
+
+int test_player_exception(Player* player) {
+    int health = player->get_health(player->context);
+
+    player->show_death_animation(player->context);
+
+    return health;
+}
+
+int test_player_concurrency(Player* player) {
+    return player->get_health(player->context);
+}

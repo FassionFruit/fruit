@@ -126,30 +126,42 @@ public final class JvmStructureHandler {
             Method method,
             Arena arena,
             Object[] nativeArguments
-    ) throws Throwable {
-        Class<?>[] parameterTypes = method.getParameterTypes();
-        Object[] arguments = new Object[parameterTypes.length];
-
-        for (int i = 0; i < parameterTypes.length; i++) {
-            arguments[i] = NativeValueConverter.fromNative(
-                    parameterTypes[i],
-                    nativeArguments[i]
-            );
-        }
-
-        Object result;
-
+    ) {
         try {
-            result = method.invoke(implementation, arguments);
-        } catch (InvocationTargetException exception) {
-            throw exception.getCause();
-        }
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            Object[] arguments = new Object[nativeArguments.length];
 
-        return NativeValueConverter.toNative(
-                method.getReturnType(),
-                result,
-                arena
-        );
+            for (int i = 0; i < nativeArguments.length; i++) {
+                arguments[i] = NativeValueConverter.fromNative(
+                        parameterTypes[i],
+                        nativeArguments[i]
+                );
+            }
+
+            Object result = method.invoke(implementation, arguments);
+
+            return NativeValueConverter.toNative(
+                    method.getReturnType(),
+                    result,
+                    arena
+            );
+        } catch (Throwable ignored) {
+            return defaultValue(method.getReturnType());
+        }
+    }
+
+    private static Object defaultValue(Class<?> type) {
+        if (type == void.class) return null;
+        if (type == boolean.class) return false;
+        if (type == byte.class) return (byte) 0;
+        if (type == short.class) return (short) 0;
+        if (type == char.class) return '\0';
+        if (type == int.class) return 0;
+        if (type == long.class) return 0L;
+        if (type == float.class) return 0.0f;
+        if (type == double.class) return 0.0;
+
+        return null;
     }
 
     private static MethodType toMethodType(FunctionDescriptor descriptor) {
