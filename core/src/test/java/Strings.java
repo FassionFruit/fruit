@@ -23,6 +23,7 @@ public interface TestLibrary {
 
 @Test
 void main() {
+    System.out.println("========[Strings]========");
     var library = FFM.load(TestLibrary.class);
 
     System.out.println(library.getMessage());

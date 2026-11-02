@@ -11,4 +11,6 @@ public @interface NativeField {
     String value();
 
     int order();
+
+    int length() default 0;
 }

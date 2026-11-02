@@ -33,6 +33,7 @@ public enum RenderMode {
 
 @Test
 void main() {
+    System.out.println("========[Default]========");
     var library = FFM.load(TestLibrary.class);
 
     assert library.calculate(10) == 20;

@@ -3,6 +3,7 @@ import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import io.github.fassionfruit.annotation.structure.NativeField;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.structure.NativeArray;
 import org.junit.jupiter.api.Test;
 
 @NativeStructure
@@ -34,8 +35,42 @@ public interface Vector3d {
     Vector3d createVector(float x, float y, float z);
 }
 
+@NativeStructure
+interface Vector2 {
+
+    @NativeField(value = "x", order = 0)
+    float getX();
+
+    @NativeField(value = "x", order = 0)
+    void setX(float value);
+
+    @NativeField(value = "y", order = 1)
+    float getY();
+
+    @NativeField(value = "y", order = 1)
+    void setY(float value);
+}
+
+@NativeLibrary("../native/struct")
+@NativeStructure
+interface Polygon {
+
+    @NativeField(value = "points", order = 0, length = 3)
+    NativeArray<Vector2> getPoints();
+
+    @NativeField(value = "count", order = 1)
+    int getCount();
+
+    @NativeField(value = "count", order = 1)
+    void setCount(int value);
+
+    @NativeSymbol("calculate_polygon_sum")
+    float calculateSum(Polygon polygon);
+}
+
 @Test
 void main() {
+    System.out.println("========[Structure]========");
     try (Arena arena = Arena.ofConfined()) {
         var vector = FFM.allocateStructure(Vector3d.class, arena);
         var library = FFM.load(Vector3d.class);
@@ -55,5 +90,26 @@ void main() {
         System.out.println(vector.getZ());
     } catch (Exception e) {
         e.printStackTrace();
+    }
+
+    try (Arena arena = Arena.ofConfined()) {
+        Polygon polygon = FFM.allocateStructure(Polygon.class, arena);
+
+        NativeArray<Vector2> points = polygon.getPoints();
+
+        points.get(0).setX(1.0f);
+        points.get(0).setY(2.0f);
+
+        points.get(1).setX(3.0f);
+        points.get(1).setY(4.0f);
+
+        points.get(2).setX(5.0f);
+        points.get(2).setY(6.0f);
+
+        polygon.setCount(3);
+
+        var library = FFM.load(Polygon.class);
+
+        System.out.println("polygon sum: " + library.calculateSum(polygon));
     }
 }

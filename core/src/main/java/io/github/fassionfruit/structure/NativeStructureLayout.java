@@ -8,6 +8,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -37,24 +38,50 @@ public final class NativeStructureLayout {
         for (Method method : type.getMethods()) {
             NativeField annotation = method.getAnnotation(NativeField.class);
 
-            if (annotation == null) continue;
+            if (annotation == null) {
+                continue;
+            }
 
             validateMethod(method);
 
+            String name = annotation.value();
+
+            if (name.isBlank()) {
+                throw new IllegalArgumentException(
+                        "Structure field name cannot be blank"
+                );
+            }
+
             Class<?> fieldType = getFieldType(method);
+            Class<?> elementType = getElementType(method);
+            int length = annotation.length();
+
+            if (fieldType == NativeArray.class && length <= 0) {
+                throw new IllegalArgumentException(
+                        "NativeArray length must be greater than zero: " + name
+                );
+            }
+
+            if (fieldType != NativeArray.class && length != 0) {
+                throw new IllegalArgumentException(
+                        "Length can only be specified for NativeArray: " + name
+                );
+            }
+
             FieldInfo info = new FieldInfo(
-                    annotation.value(),
+                    name,
                     annotation.order(),
-                    fieldType
+                    fieldType,
+                    elementType,
+                    length
             );
 
-            FieldInfo existing = fields.putIfAbsent(info.name(), info);
+            FieldInfo existing = fields.putIfAbsent(name, info);
 
             if (existing != null) {
-                if (existing.order() != info.order()
-                        || existing.type() != info.type()) {
+                if (!existing.equals(info)) {
                     throw new IllegalArgumentException(
-                            "Inconsistent field declaration: " + info.name()
+                            "Inconsistent field declaration: " + name
                     );
                 }
             }
@@ -69,13 +96,33 @@ public final class NativeStructureLayout {
         List<FieldInfo> orderedFields = new ArrayList<>(fields.values());
         orderedFields.sort(Comparator.comparingInt(FieldInfo::order));
 
+        for (int i = 1; i < orderedFields.size(); i++) {
+            if (orderedFields.get(i - 1).order() == orderedFields.get(i).order()) {
+                throw new IllegalArgumentException(
+                        "Duplicate structure field order: "
+                                + orderedFields.get(i).order()
+                );
+            }
+        }
+
         List<MemoryLayout> layouts = new ArrayList<>();
+
         long offset = 0;
         long maxAlignment = 1;
 
         for (FieldInfo field : orderedFields) {
-            MemoryLayout layout = map(field.type())
-                    .withName(field.name());
+            MemoryLayout layout;
+
+            if (field.type() == NativeArray.class) {
+                layout = MemoryLayout.sequenceLayout(
+                        field.length(),
+                        map(field.elementType())
+                );
+            } else {
+                layout = map(field.type());
+            }
+
+            layout = layout.withName(field.name());
 
             long alignment = layout.byteAlignment();
             long padding = (alignment - offset % alignment) % alignment;
@@ -87,6 +134,7 @@ public final class NativeStructureLayout {
 
             layouts.add(layout);
             offset += layout.byteSize();
+
             maxAlignment = Math.max(maxAlignment, alignment);
         }
 
@@ -102,25 +150,35 @@ public final class NativeStructureLayout {
     }
 
     public static long offset(Class<?> type, String fieldName) {
-        GroupLayout layout = create(type);
-
-        return layout.byteOffset(PathElement.groupElement(fieldName));
+        return create(type).byteOffset(
+                PathElement.groupElement(fieldName)
+        );
     }
 
     public static MemoryLayout fieldLayout(Class<?> type, String fieldName) {
-        GroupLayout layout = create(type);
-
-        return layout.select(PathElement.groupElement(fieldName));
+        return create(type).select(
+                PathElement.groupElement(fieldName)
+        );
     }
 
-    private static MemoryLayout map(Class<?> type) {
+    public static MemoryLayout map(Class<?> type) {
+        if (type.isAnnotationPresent(NativeStructure.class)) {
+            return create(type);
+        }
+
         if (type.isEnum()) return ValueLayout.JAVA_INT;
-        if (type == byte.class) return ValueLayout.JAVA_BYTE;
-        if (type == short.class || type == char.class) return ValueLayout.JAVA_SHORT;
-        if (type == int.class || type == boolean.class) return ValueLayout.JAVA_INT;
-        if (type == long.class) return ValueLayout.JAVA_LONG;
-        if (type == float.class) return ValueLayout.JAVA_FLOAT;
-        if (type == double.class) return ValueLayout.JAVA_DOUBLE;
+        if (type == byte.class || type == Byte.class) return ValueLayout.JAVA_BYTE;
+        if (type == short.class || type == Short.class
+                || type == char.class || type == Character.class) {
+            return ValueLayout.JAVA_SHORT;
+        }
+        if (type == int.class || type == Integer.class
+                || type == boolean.class || type == Boolean.class) {
+            return ValueLayout.JAVA_INT;
+        }
+        if (type == long.class || type == Long.class) return ValueLayout.JAVA_LONG;
+        if (type == float.class || type == Float.class) return ValueLayout.JAVA_FLOAT;
+        if (type == double.class || type == Double.class) return ValueLayout.JAVA_DOUBLE;
 
         throw new IllegalArgumentException(
                 "Unsupported structure field type: " + type.getName()
@@ -146,6 +204,13 @@ public final class NativeStructureLayout {
                     "Structure setter must return void: " + method.getName()
             );
         }
+
+        if (method.getReturnType() == NativeArray.class
+                && method.getParameterCount() != 0) {
+            throw new IllegalArgumentException(
+                    "NativeArray must be declared as a getter: " + method.getName()
+            );
+        }
     }
 
     private static Class<?> getFieldType(Method method) {
@@ -154,10 +219,32 @@ public final class NativeStructureLayout {
                 : method.getParameterTypes()[0];
     }
 
+    private static Class<?> getElementType(Method method) {
+        if (method.getReturnType() != NativeArray.class) {
+            return null;
+        }
+
+        if (!(method.getGenericReturnType() instanceof ParameterizedType parameterized)) {
+            throw new IllegalArgumentException(
+                    "NativeArray must declare its component type: " + method.getName()
+            );
+        }
+
+        if (!(parameterized.getActualTypeArguments()[0] instanceof Class<?> elementType)) {
+            throw new IllegalArgumentException(
+                    "Unsupported NativeArray component type: " + method.getName()
+            );
+        }
+
+        return elementType;
+    }
+
     private record FieldInfo(
             String name,
             int order,
-            Class<?> type
+            Class<?> type,
+            Class<?> elementType,
+            int length
     ) {
     }
 }

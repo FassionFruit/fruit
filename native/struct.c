@@ -24,3 +24,24 @@ float calculate_length(const Vector3d* vector) {
         vector->z * vector->z
     );
 }
+
+typedef struct {
+    float x;
+    float y;
+} Vector2;
+
+typedef struct {
+    Vector2 points[3];
+    int count;
+} Polygon;
+
+float calculate_polygon_sum(Polygon* polygon) {
+    float sum = 0;
+
+    for (int i = 0; i < polygon->count; i++) {
+        sum += polygon->points[i].x;
+        sum += polygon->points[i].y;
+    }
+
+    return sum;
+}
