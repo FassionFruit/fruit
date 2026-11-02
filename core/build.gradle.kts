@@ -8,7 +8,6 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":utils"))
     implementation(project(":api"))
 
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
@@ -20,4 +19,13 @@ application {
     // Define the Fully Qualified Name for the application main class
     // (Note that Kotlin compiles `App.kt` to a class with FQN `com.example.app.AppKt`.)
     mainClass = "io.github.fassionfruit.core.coreKt"
+}
+
+tasks.test {
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+
+    testLogging {
+        showStandardStreams = true
+        events("passed", "failed", "skipped")
+    }
 }

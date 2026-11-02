@@ -1,26 +1,49 @@
 import io.github.fassionfruit.FFM;
+import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 @NativeLibrary("../samples/test.dll")
 public interface TestLibrary {
-
     @NativeSymbol("calculate_value")
     int calculate(int input);
 
     @NativeSymbol("add_values")
     int add(int a, int b);
 
-    @NativeSymbol("set_value")
-    void set(int value);
+    @NativeSymbol("is_positive")
+    boolean isPositive(int value);
+
+    @NativeSymbol("get_character")
+    char getCharacter();
+
+    @NativeSymbol("echo_character")
+    char echoCharacter(char value);
+
+    @NativeSymbol("set_render_mode")
+    RenderMode setRenderMode(RenderMode mode);
+}
+
+public enum RenderMode {
+    @NativeEnumValue(0) DEFAULT,
+    @NativeEnumValue(1) FAST,
+    @NativeEnumValue(2) QUALITY
 }
 
 @Test
 void main() {
-    var lib = FFM.load(TestLibrary.class);
+    TestLibrary library = FFM.load(TestLibrary.class);
 
-    assertEquals(5, lib.add(3, 2));
+    assert library.calculate(10) == 20;
+    assert library.add(10, 20) == 30;
+
+    assert library.isPositive(10);
+    assert !library.isPositive(-10);
+
+    assert library.getCharacter() == 'A';
+    assert library.echoCharacter('B') == 'B';
+
+    RenderMode result = library.setRenderMode(RenderMode.QUALITY);
+    assert result == RenderMode.QUALITY;
 }
