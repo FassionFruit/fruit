@@ -29,6 +29,9 @@ public interface Vector3d {
 
     @NativeSymbol("calculate_length")
     float calculateLength(Vector3d vector);
+
+    @NativeSymbol("create_vector")
+    Vector3d createVector(float x, float y, float z);
 }
 
 @Test
@@ -44,6 +47,12 @@ void main() {
         float result = library.calculateLength(vector);
 
         System.out.println(result);
+
+        vector = library.createVector(1.0f, 2.0f, 3.0f);
+
+        System.out.println(vector.getX());
+        System.out.println(vector.getY());
+        System.out.println(vector.getZ());
     } catch (Exception e) {
         e.printStackTrace();
     }

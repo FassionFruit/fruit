@@ -3,6 +3,7 @@ package io.github.fassionfruit.internal;
 import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 import io.github.fassionfruit.structure.NativeStructureHandler;
+import io.github.fassionfruit.structure.NativeStructureLayout;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -63,10 +64,17 @@ public final class NativeValueConverter {
         if (type == void.class) return null;
 
         if (type.isAnnotationPresent(NativeStructure.class)) {
-            throw new IllegalArgumentException(
-                    "Native structure return values are not supported yet: "
-                            + type.getName()
-            );
+            MemorySegment segment = (MemorySegment) value;
+
+            if (segment.address() == 0) {
+                return null;
+            }
+
+            long size = NativeStructureLayout.create(type).byteSize();
+
+            MemorySegment structureSegment = segment.reinterpret(size);
+
+            return NativeStructureHandler.create(type, structureSegment);
         }
 
         if (type == String.class) {

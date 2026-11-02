@@ -15,13 +15,6 @@ public final class NativeTypeMapper {
     public static FunctionDescriptor createDescriptor(Method method) {
         Class<?> returnType = method.getReturnType();
 
-        if (returnType.isAnnotationPresent(NativeStructure.class)) {
-            throw new IllegalArgumentException(
-                    "Native structure return values are not supported yet: "
-                            + returnType.getName()
-            );
-        }
-
         MemoryLayout[] parameterLayouts = new MemoryLayout[
                 method.getParameterCount()
                 ];
@@ -36,7 +29,10 @@ public final class NativeTypeMapper {
             return FunctionDescriptor.ofVoid(parameterLayouts);
         }
 
-        return FunctionDescriptor.of(map(returnType), parameterLayouts);
+        return FunctionDescriptor.of(
+                map(returnType),
+                parameterLayouts
+        );
     }
 
     private static MemoryLayout map(Class<?> type) {

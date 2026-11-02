@@ -2,6 +2,7 @@ package io.github.fassionfruit.structure;
 
 import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.structure.NativeField;
+import io.github.fassionfruit.annotation.structure.NativeStructure;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -189,6 +190,26 @@ public final class NativeStructureHandler implements InvocationHandler {
         }
 
         return handler.segment;
+    }
+
+    public static <T> T create(Class<T> type, MemorySegment segment) {
+        if (!type.isInterface()) {
+            throw new IllegalArgumentException(
+                    type.getName() + " must be an interface"
+            );
+        }
+
+        if (!type.isAnnotationPresent(NativeStructure.class)) {
+            throw new IllegalArgumentException(
+                    type.getName() + " is missing @NativeStructure"
+            );
+        }
+
+        return type.cast(Proxy.newProxyInstance(
+                type.getClassLoader(),
+                new Class<?>[]{type},
+                new NativeStructureHandler(type, segment)
+        ));
     }
 
     private record FieldInfo(

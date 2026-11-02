@@ -49,10 +49,6 @@ public final class FFM {
                 NativeStructureLayout.create(type)
         );
 
-        return type.cast(Proxy.newProxyInstance(
-                type.getClassLoader(),
-                new Class<?>[]{type},
-                new NativeStructureHandler(type, segment)
-        ));
+        return NativeStructureHandler.create(type, segment);
     }
 }
