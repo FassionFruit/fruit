@@ -1,23 +1,56 @@
-
 # FassionFruit
 
-**A binding library for Java's Foreign Function & Memory API.**
+**A lightweight, annotation-driven binding library for Java's Foreign Function & Memory API (FFM).**
 
-FassionFruit makes calling native functions from Java and Kotlin easier through interfaces and annotations.
+FassionFruit simplifies native interoperability by allowing developers to define native libraries through Java interfaces and annotations.
 
-Instead of manually handling native library loading, symbol lookup, function descriptors, and method handles, you can define a Java or Kotlin interface and let FassionFruit handle the binding.
+Instead of manually handling library loading, symbol lookup, function descriptors, and method handles, FassionFruit provides a declarative API for native function bindings.
+
+> **Status:** Early development. APIs and implementation are subject to change.
+
+## Why FassionFruit?
+
+Java provides multiple ways to interact with native code. Each approach has its own trade-offs.
+
+| Feature | JNI | Java FFM | FassionFruit |
+|---|:---:|:---:|:---:|
+| Native code integration | ✅ | ✅ | ✅ |
+| No C/C++ boilerplate for bindings | ❌ | ✅ | ✅ |
+| No manual symbol lookup | ⚠️ | ❌ | ✅ |
+| No manual function handle setup | ⚠️ | ❌ | ✅ |
+| Interface-based API | ❌ | ❌ | ✅ |
+| Annotation-driven bindings | ❌ | ❌ | ✅ |
+| Native structure mapping | ⚠️ | ⚠️ | ✅ |
+| Native callbacks | ⚠️ | ✅ | ✅ |
+| Pure Java implementation | ❌ | ✅ | ✅ |
+| Requires native access configuration | ❌ | ✅ | ✅ |
+
+### Legend
+
+- ✅ Supported
+- ⚠️ Possible, but requires additional implementation or manual work
+- ❌ Not supported directly
 
 ## Features
 
-- Annotation-based native library declarations
-- Native symbol lookup
-- Interface-based native function bindings
-- Java and Kotlin API compatibility
-- Built on Java's Foreign Function & Memory API
+- **Interface-based bindings** — Define native functions using Java interfaces.
+- **Annotation-driven symbol lookup** — Map Java methods to native symbols using `@NativeSymbol`.
+- **Native library loading** — Associate interfaces with native libraries using `@NativeLibrary`.
+- **Type conversion** — Convert supported Java types to and from native representations.
+- **Enum mapping** — Map Java enums to native values using `@NativeEnumValue`.
+- **Native callbacks** — Expose Java functional interfaces to native code using `@NativeCallback`.
+- **Native structures** — Map Java interfaces to native structures using `@NativeStructure` and `@NativeField`.
+- **JVM structure export** — Export Java-side structure implementations to native memory using `@JvmStructure`.
 
-## Example
+
+## Quick Start
+
+Define an interface representing a native library:
 
 ```java
+import io.github.fassionfruit.annotation.NativeLibrary;
+import io.github.fassionfruit.annotation.NativeSymbol;
+
 @NativeLibrary("mylib")
 public interface MyLibrary {
 
@@ -25,37 +58,40 @@ public interface MyLibrary {
     int calculate(int input);
 
     @NativeSymbol("add_values")
-    int add(int a, int b);
+    int add(int left, int right);
 }
 ```
 
-Load the native library and invoke its functions:
+Load the native library:
 
 ```java
-MyLibrary lib = FFM.load(MyLibrary.class);
+import io.github.fassionfruit.FFM;
 
-int result = lib.add(3, 2);
-System.out.println(result);
+public class Example {
+public static void main(String[] args) {
+MyLibrary library = FFM.load(MyLibrary.class);
+
+        int result = library.add(10, 20);
+        System.out.println(result);
+    }
+}
 ```
+
+FassionFruit handles the binding process internally, allowing you to call native functions through ordinary Java interface methods.
 
 ## Requirements
 
 - JDK 26
-- Gradle Wrapper
+- A compatible native library
+- A native library exposing the expected symbols
 
-FassionFruit uses the Java Foreign Function & Memory API.
+Native access must be enabled when launching the JVM:
 
-## Project Structure
+```bash
+java --enable-native-access=ALL-UNNAMED ...
+```
 
-| Module | Description |
-|---|---|
-| `api` | Public annotations and API declarations |
-| `core` | Core FFM implementation |
-| `utils` | Internal utilities |
-| `buildSrc` | Shared Gradle build logic |
-| `samples` | Native library samples |
-
-## Building
+## Building from Source
 
 Clone the repository:
 
@@ -79,18 +115,40 @@ Run tests:
 On Windows:
 
 ```powershell
-.\gradlew.bat build
+.\\gradlew.bat build
+.\\gradlew.bat test
 ```
 
-Some native integration tests may require platform-specific native libraries.
+Some integration tests require a C compiler to build native test libraries.
+
+## Project Structure
+
+| Module | Description |
+| --- | --- |
+| `api` | Public API and annotations |
+| `core` | Core FFM binding implementation |
+| `native` | Native C test libraries |
+| `buildSrc` | Shared Gradle build logic |
 
 ## Project Status
 
 FassionFruit is currently under active development.
 
-The `0.1.0` development milestone includes basic native library loading, symbol lookup, and primitive argument and return-value handling.
+The public API, supported types, and implementation details may change before the first stable release.
 
-APIs and implementation details may change between releases.
+Production stability and compatibility guarantees are not yet established.
+
+## Contributing
+
+Contributions are welcome!
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
+
+All contributors are expected to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+For information about reporting security vulnerabilities, see [SECURITY.md](SECURITY.md).
 
 ## License
 
