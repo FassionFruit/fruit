@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 typedef struct {
     void* context;
 
@@ -8,6 +10,9 @@ typedef struct {
 
 int test_player(Player* player) {
     int health = player->get_health(player->context);
+
+    printf("(C) player's health: %ld\n", (long) health);
+    fflush(stdout);
 
     player->add_health(player->context, 50);
     player->show_death_animation(player->context);
