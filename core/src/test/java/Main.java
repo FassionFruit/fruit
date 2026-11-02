@@ -1,8 +1,11 @@
 import io.github.fassionfruit.FFM;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
+import org.junit.jupiter.api.Test;
 
-@NativeLibrary("samples/test.dll")
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@NativeLibrary("../samples/test.dll")
 public interface TestLibrary {
 
     @NativeSymbol("calculate_value")
@@ -15,8 +18,9 @@ public interface TestLibrary {
     void set(int value);
 }
 
+@Test
 void main() {
     var lib = FFM.load(TestLibrary.class);
 
-    System.out.println(lib.add(3, 2));
+    assertEquals(5, lib.add(3, 2));
 }
