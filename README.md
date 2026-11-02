@@ -6,7 +6,7 @@ FassionFruit simplifies native interoperability by allowing developers to define
 
 Instead of manually handling library loading, symbol lookup, function descriptors, and method handles, FassionFruit provides a declarative API for native function bindings.
 
-> **Status:** Early development. APIs and implementation are subject to change.
+> [!WARNING] Early development. APIs and implementation are subject to change.
 
 ## Why FassionFruit?
 
