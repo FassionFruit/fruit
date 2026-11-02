@@ -25,16 +25,16 @@ The project requires:
 
 Clone the repository:
 
-\`\`\`bash
+```bash
 git clone https://github.com/FassionFruit/fruit.git
 cd fruit
-\`\`\`
+```
 
 Build the project:
 
-\`\`\`bash
+```bash
 ./gradlew build
-\`\`\`
+```
 
 ## Contribution Guidelines
 
@@ -87,6 +87,21 @@ Tests should cover:
 - Unsupported types
 - Boundary conditions
 - Native memory handling
+
+## Use of AI Tools
+
+The use of AI tools is permitted and not discouraged when contributing to FassionFruit.
+
+However, contributors are fully responsible for all code and content they submit, regardless of whether they were created with the assistance of AI tools.
+
+Contributors must ensure that:
+
+- Submitted code is understood and can be properly explained.
+- Generated code is reviewed, tested, and verified before submission.
+- AI-generated content does not introduce security vulnerabilities, license violations, or unrelated changes.
+- All contributions comply with this project's guidelines and license.
+
+AI assistance does not exempt contributors from responsibility for the quality, correctness, and maintainability of their contributions.
 
 ## Pull Requests
 
