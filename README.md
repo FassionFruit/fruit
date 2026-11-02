@@ -55,7 +55,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.FassionFruit:fruit:")
+    implementation("com.github.FassionFruit:fruit:(version)")
 }
 ```
 
