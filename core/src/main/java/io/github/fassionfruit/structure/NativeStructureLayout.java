@@ -5,6 +5,7 @@ import io.github.fassionfruit.annotation.structure.NativeStructure;
 
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.reflect.Method;
@@ -78,12 +79,10 @@ public final class NativeStructureLayout {
 
             FieldInfo existing = fields.putIfAbsent(name, info);
 
-            if (existing != null) {
-                if (!existing.equals(info)) {
-                    throw new IllegalArgumentException(
-                            "Inconsistent field declaration: " + name
-                    );
-                }
+            if (existing != null && !existing.equals(info)) {
+                throw new IllegalArgumentException(
+                        "Inconsistent field declaration: " + name
+                );
             }
         }
 
@@ -122,17 +121,15 @@ public final class NativeStructureLayout {
                 layout = map(field.type());
             }
 
-            layout = layout.withName(field.name());
-
             long alignment = layout.byteAlignment();
             long padding = (alignment - offset % alignment) % alignment;
 
             if (padding > 0) {
-                layouts.add(MemoryLayout.paddingLayout(padding * 8));
+                layouts.add(MemoryLayout.paddingLayout(padding));
                 offset += padding;
             }
 
-            layouts.add(layout);
+            layouts.add(layout.withName(field.name()));
             offset += layout.byteSize();
 
             maxAlignment = Math.max(maxAlignment, alignment);
@@ -141,12 +138,12 @@ public final class NativeStructureLayout {
         long finalPadding = (maxAlignment - offset % maxAlignment) % maxAlignment;
 
         if (finalPadding > 0) {
-            layouts.add(MemoryLayout.paddingLayout(finalPadding * 8));
+            layouts.add(MemoryLayout.paddingLayout(finalPadding));
         }
 
         return MemoryLayout.structLayout(
                 layouts.toArray(MemoryLayout[]::new)
-        );
+        ).withByteAlignment(maxAlignment);
     }
 
     public static long offset(Class<?> type, String fieldName) {
@@ -162,6 +159,8 @@ public final class NativeStructureLayout {
     }
 
     public static MemoryLayout map(Class<?> type) {
+        if (type == MemorySegment.class) return ValueLayout.ADDRESS;
+
         if (type.isAnnotationPresent(NativeStructure.class)) {
             return create(type);
         }

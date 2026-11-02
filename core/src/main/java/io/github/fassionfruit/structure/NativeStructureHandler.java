@@ -122,6 +122,15 @@ public final class NativeStructureHandler implements InvocationHandler {
         Class<?> fieldType = field.type();
         long offset = field.offset();
 
+        if (fieldType == MemorySegment.class) {
+            MemorySegment pointer = value == null
+                    ? MemorySegment.NULL
+                    : (MemorySegment) value;
+
+            segment.set(ValueLayout.ADDRESS, offset, pointer);
+            return;
+        }
+
         if (fieldType.isAnnotationPresent(NativeStructure.class)) {
             if (value == null) {
                 throw new IllegalArgumentException(
@@ -192,6 +201,10 @@ public final class NativeStructureHandler implements InvocationHandler {
     private Object read(FieldInfo field) {
         Class<?> fieldType = field.type();
         long offset = field.offset();
+
+        if (fieldType == MemorySegment.class) {
+            return segment.get(ValueLayout.ADDRESS, offset);
+        }
 
         if (fieldType == NativeArray.class) {
             long stride = NativeStructureLayout.map(

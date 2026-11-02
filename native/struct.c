@@ -45,3 +45,19 @@ float calculate_polygon_sum(Polygon* polygon) {
 
     return sum;
 }
+
+typedef struct {
+    int id;
+    float* values;
+    int count;
+} Data;
+
+float calculate_data_sum(Data* data) {
+    float sum = 0;
+
+    for (int i = 0; i < data->count; i++) {
+        sum += data->values[i];
+    }
+
+    return sum;
+}

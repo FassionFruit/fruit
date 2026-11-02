@@ -4,7 +4,11 @@ import io.github.fassionfruit.annotation.NativeSymbol;
 import io.github.fassionfruit.annotation.structure.NativeField;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 import io.github.fassionfruit.structure.NativeArray;
+import io.github.fassionfruit.structure.NativeStructureHandler;
+import io.github.fassionfruit.structure.NativeStructureLayout;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @NativeStructure
 @NativeLibrary("../native/struct")
@@ -112,4 +116,48 @@ void main() {
 
         System.out.println("polygon sum: " + library.calculateSum(polygon));
     }
+
+    try (Arena arena = Arena.ofConfined()) {
+        GroupLayout layout = NativeStructureLayout.create(Data.class);
+
+        MemorySegment dataSegment = arena.allocate(layout);
+        MemorySegment values = arena.allocate(
+                ValueLayout.JAVA_FLOAT,
+                3
+        );
+
+        values.setAtIndex(ValueLayout.JAVA_FLOAT, 0, 10.0f);
+        values.setAtIndex(ValueLayout.JAVA_FLOAT, 1, 20.0f);
+        values.setAtIndex(ValueLayout.JAVA_FLOAT, 2, 30.0f);
+
+        Data data = NativeStructureHandler.create(Data.class, dataSegment);
+
+        data.setId(1);
+        data.setValues(values);
+        data.setCount(3);
+
+        assertEquals(values.address(), data.getValues().address());
+        assertEquals(3, data.getCount());
+    }
+}
+
+@NativeStructure
+public interface Data {
+    @NativeField(value = "id", order = 0)
+    int getId();
+
+    @NativeField(value = "id", order = 0)
+    void setId(int id);
+
+    @NativeField(value = "values", order = 1)
+    MemorySegment getValues();
+
+    @NativeField(value = "values", order = 1)
+    void setValues(MemorySegment values);
+
+    @NativeField(value = "count", order = 2)
+    int getCount();
+
+    @NativeField(value = "count", order = 2)
+    void setCount(int count);
 }
