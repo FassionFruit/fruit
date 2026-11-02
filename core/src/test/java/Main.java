@@ -1,4 +1,5 @@
 import io.github.fassionfruit.FFM;
+import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
@@ -23,6 +24,14 @@ public interface TestLibrary {
 
     @NativeSymbol("set_render_mode")
     RenderMode setRenderMode(RenderMode mode);
+
+    @NativeSymbol("execute_callback")
+    int execute(Callback callback, int value);
+}
+
+@NativeCallback
+public interface Callback {
+    int invoke(int value);
 }
 
 public enum RenderMode {
@@ -35,6 +44,14 @@ public enum RenderMode {
 void main() {
     System.out.println("========[Default]========");
     var library = FFM.load(TestLibrary.class);
+
+    int callbackResult = library.execute(
+            value -> value * 2,
+            21
+    );
+
+    System.out.println("callback: "+callbackResult);
+    assert callbackResult == 42;
 
     assert library.calculate(10) == 20;
     assert library.add(10, 20) == 30;

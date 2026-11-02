@@ -27,3 +27,9 @@ int32_t set_render_mode(int32_t mode) {
 
     return mode;
 }
+
+typedef int (*Callback)(int value);
+
+int execute_callback(Callback callback, int value) {
+    return callback(value);
+}

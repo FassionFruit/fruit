@@ -1,17 +1,30 @@
 package io.github.fassionfruit.internal;
 
+import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 import io.github.fassionfruit.structure.NativeStructureHandler;
 import io.github.fassionfruit.structure.NativeStructureLayout;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public final class NativeValueConverter {
 
     private static final long MAX_STRING_BYTES = 1024 * 1024;
+
+    private static final Linker LINKER = Linker.nativeLinker();
 
     private NativeValueConverter() {
     }
@@ -20,11 +33,22 @@ public final class NativeValueConverter {
         if (value == null) {
             if (type == String.class
                     || type == MemorySegment.class
-                    || type.isAnnotationPresent(NativeStructure.class)) {
+                    || type.isAnnotationPresent(NativeStructure.class)
+                    || type.isAnnotationPresent(NativeCallback.class)) {
                 return MemorySegment.NULL;
             }
 
             return null;
+        }
+
+        if (type.isAnnotationPresent(NativeCallback.class)) {
+            if (!type.isInstance(value)) {
+                throw new IllegalArgumentException(
+                        "Expected native callback: " + type.getName()
+                );
+            }
+
+            return createCallbackStub(type, value, arena);
         }
 
         if (type.isAnnotationPresent(NativeStructure.class)) {
@@ -88,7 +112,7 @@ public final class NativeValueConverter {
         if (type == MemorySegment.class) return value;
 
         if (type == char.class || type == Character.class) {
-            return (char) ((short) value);
+            return (char) (short) value;
         }
 
         if (type == boolean.class || type == Boolean.class) {
@@ -100,6 +124,151 @@ public final class NativeValueConverter {
         }
 
         return value;
+    }
+
+    private static MemorySegment createCallbackStub(
+            Class<?> type,
+            Object callback,
+            Arena arena
+    ) {
+        Method callbackMethod = findCallbackMethod(type);
+
+        FunctionDescriptor descriptor =
+                NativeTypeMapper.createDescriptor(callbackMethod);
+
+        MethodHandle target;
+
+        try {
+            target = MethodHandles.lookup().findStatic(
+                    NativeValueConverter.class,
+                    "invokeCallback",
+                    MethodType.methodType(
+                            Object.class,
+                            Object.class,
+                            Method.class,
+                            Arena.class,
+                            Object[].class
+                    )
+            );
+        } catch (NoSuchMethodException | IllegalAccessException exception) {
+            throw new IllegalStateException(
+                    "Failed to create native callback",
+                    exception
+            );
+        }
+
+        target = MethodHandles.insertArguments(
+                target,
+                0,
+                callback,
+                callbackMethod,
+                arena
+        );
+
+        target = target.asCollector(
+                Object[].class,
+                callbackMethod.getParameterCount()
+        );
+
+        target = target.asType(toMethodType(descriptor));
+
+        return LINKER.upcallStub(target, descriptor, arena);
+    }
+
+    private static Method findCallbackMethod(Class<?> type) {
+        if (!type.isInterface()) {
+            throw new IllegalArgumentException(
+                    type.getName() + " must be an interface"
+            );
+        }
+
+        Method[] methods = type.getMethods();
+
+        Method callbackMethod = null;
+
+        for (Method method : methods) {
+            int modifiers = method.getModifiers();
+
+            if (!Modifier.isAbstract(modifiers)
+                    || Modifier.isStatic(modifiers)
+                    || method.isBridge()
+                    || method.isSynthetic()
+                    || method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            if (callbackMethod != null) {
+                throw new IllegalArgumentException(
+                        "Native callback must have exactly one abstract method: "
+                                + type.getName()
+                );
+            }
+
+            callbackMethod = method;
+        }
+
+        if (callbackMethod == null) {
+            throw new IllegalArgumentException(
+                    "Native callback must declare an abstract method: "
+                            + type.getName()
+            );
+        }
+
+        return callbackMethod;
+    }
+
+    private static MethodType toMethodType(FunctionDescriptor descriptor) {
+        Class<?>[] parameterTypes = descriptor.argumentLayouts()
+                .stream()
+                .map(NativeValueConverter::getCarrier)
+                .toArray(Class<?>[]::new);
+
+        Class<?> returnType = descriptor.returnLayout()
+                .<Class<?>>map(NativeValueConverter::getCarrier)
+                .orElse(void.class);
+
+        return MethodType.methodType(returnType, parameterTypes);
+    }
+
+    private static Class<?> getCarrier(MemoryLayout layout) {
+        if (layout instanceof ValueLayout valueLayout) {
+            return valueLayout.carrier();
+        }
+
+        throw new IllegalArgumentException(
+                "Unsupported callback layout: " + layout
+        );
+    }
+
+    private static Object invokeCallback(
+            Object callback,
+            Method method,
+            Arena arena,
+            Object[] nativeArguments
+    ) throws Throwable {
+        Class<?>[] parameterTypes = method.getParameterTypes();
+        Object[] arguments = new Object[parameterTypes.length];
+
+        for (int i = 0; i < parameterTypes.length; i++) {
+            arguments[i] = fromNative(
+                    parameterTypes[i],
+                    nativeArguments[i]
+            );
+        }
+
+        Object result;
+
+        try {
+            result = method.invoke(callback, arguments);
+        } catch (InvocationTargetException exception) {
+            throw exception.getCause();
+        }
+
+        return toNative(
+                method.getReturnType(),
+                result,
+                arena
+        );
     }
 
     private static int getEnumValue(Enum<?> value) {

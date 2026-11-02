@@ -1,5 +1,6 @@
 package io.github.fassionfruit.internal;
 
+import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 
 import java.lang.foreign.FunctionDescriptor;
@@ -36,6 +37,10 @@ public final class NativeTypeMapper {
     }
 
     private static MemoryLayout map(Class<?> type) {
+        if (type.isAnnotationPresent(NativeCallback.class)) {
+            return ValueLayout.ADDRESS;
+        }
+
         if (type.isAnnotationPresent(NativeStructure.class)) {
             return ValueLayout.ADDRESS;
         }
