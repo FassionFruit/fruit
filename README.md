@@ -24,9 +24,6 @@ Java provides multiple ways to interact with native code. Each approach has its 
 | Native callbacks | ⚠️ | ✅ | ✅ |
 | Pure Java implementation | ❌ | ✅ | ✅ |
 | Requires native access configuration | ❌ | ✅ | ✅ |
-
-### Legend
-
 - ✅ Supported
 - ⚠️ Possible, but requires additional implementation or manual work
 - ❌ Not supported directly
