@@ -47,6 +47,18 @@ Java provides multiple ways to interact with native code. Each approach has its 
 
 ## Quick Start
 
+Dependencies
+
+```gradle
+repositories {
+    maven("https://jitpack.io")
+}
+
+dependencies {
+    implementation("com.github.FassionFruit:fruit:")
+}
+```
+
 Define an interface representing a native library:
 
 ```java
