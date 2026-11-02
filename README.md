@@ -67,14 +67,10 @@ Load the native library:
 ```java
 import io.github.fassionfruit.FFM;
 
-public class Example {
-public static void main(String[] args) {
 MyLibrary library = FFM.load(MyLibrary.class);
 
-        int result = library.add(10, 20);
-        System.out.println(result);
-    }
-}
+int result = library.add(10, 20);
+System.out.println(result);
 ```
 
 FassionFruit handles the binding process internally, allowing you to call native functions through ordinary Java interface methods.
