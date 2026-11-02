@@ -33,7 +33,7 @@ public enum RenderMode {
 
 @Test
 void main() {
-    TestLibrary library = FFM.load(TestLibrary.class);
+    var library = FFM.load(TestLibrary.class);
 
     assert library.calculate(10) == 20;
     assert library.add(10, 20) == 30;

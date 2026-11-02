@@ -1,7 +1,14 @@
 package io.github.fassionfruit;
 
 import io.github.fassionfruit.annotation.NativeLibrary;
+import io.github.fassionfruit.annotation.structure.NativeStructure;
 import io.github.fassionfruit.internal.NativeLoader;
+import io.github.fassionfruit.structure.NativeStructureHandler;
+import io.github.fassionfruit.structure.NativeStructureLayout;
+
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.reflect.Proxy;
 
 public final class FFM {
     private FFM() {
@@ -23,5 +30,29 @@ public final class FFM {
         }
 
         return NativeLoader.load(type, annotation.value());
+    }
+
+    public static <T> T allocateStructure(Class<T> type, Arena arena) {
+        if (!type.isInterface()) {
+            throw new IllegalArgumentException(
+                    type.getName() + " must be an interface"
+            );
+        }
+
+        if (!type.isAnnotationPresent(NativeStructure.class)) {
+            throw new IllegalArgumentException(
+                    type.getName() + " is missing @NativeStructure"
+            );
+        }
+
+        MemorySegment segment = arena.allocate(
+                NativeStructureLayout.create(type)
+        );
+
+        return type.cast(Proxy.newProxyInstance(
+                type.getClassLoader(),
+                new Class<?>[]{type},
+                new NativeStructureHandler(type, segment)
+        ));
     }
 }

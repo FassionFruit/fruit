@@ -23,7 +23,7 @@ public interface TestLibrary {
 
 @Test
 void main() {
-    TestLibrary library = FFM.load(TestLibrary.class);
+    var library = FFM.load(TestLibrary.class);
 
     System.out.println(library.getMessage());
     System.out.println(library.echoString("FassionFruit"));

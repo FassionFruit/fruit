@@ -1,8 +1,9 @@
 package io.github.fassionfruit.internal;
 
+import io.github.fassionfruit.annotation.structure.NativeStructure;
+
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
-import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Method;
 
@@ -13,6 +14,13 @@ public final class NativeTypeMapper {
 
     public static FunctionDescriptor createDescriptor(Method method) {
         Class<?> returnType = method.getReturnType();
+
+        if (returnType.isAnnotationPresent(NativeStructure.class)) {
+            throw new IllegalArgumentException(
+                    "Native structure return values are not supported yet: "
+                            + returnType.getName()
+            );
+        }
 
         MemoryLayout[] parameterLayouts = new MemoryLayout[
                 method.getParameterCount()
@@ -28,15 +36,19 @@ public final class NativeTypeMapper {
             return FunctionDescriptor.ofVoid(parameterLayouts);
         }
 
-        return FunctionDescriptor.of(
-                map(returnType),
-                parameterLayouts
-        );
+        return FunctionDescriptor.of(map(returnType), parameterLayouts);
     }
 
     private static MemoryLayout map(Class<?> type) {
+        if (type.isAnnotationPresent(NativeStructure.class)) {
+            return ValueLayout.ADDRESS;
+        }
+
+        if (type == String.class || type == java.lang.foreign.MemorySegment.class) {
+            return ValueLayout.ADDRESS;
+        }
+
         if (type.isEnum()) return ValueLayout.JAVA_INT;
-        if (type == String.class || type == MemorySegment.class) return ValueLayout.ADDRESS;
         if (type == byte.class) return ValueLayout.JAVA_BYTE;
         if (type == short.class || type == char.class) return ValueLayout.JAVA_SHORT;
         if (type == int.class || type == boolean.class) return ValueLayout.JAVA_INT;

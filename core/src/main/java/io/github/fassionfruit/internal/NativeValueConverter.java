@@ -1,6 +1,8 @@
 package io.github.fassionfruit.internal;
 
 import io.github.fassionfruit.annotation.NativeEnumValue;
+import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.structure.NativeStructureHandler;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -15,18 +17,32 @@ public final class NativeValueConverter {
 
     public static Object toNative(Class<?> type, Object value, Arena arena) {
         if (value == null) {
-            if (type == String.class || type == MemorySegment.class) {
+            if (type == String.class
+                    || type == MemorySegment.class
+                    || type.isAnnotationPresent(NativeStructure.class)) {
                 return MemorySegment.NULL;
             }
 
             return null;
         }
 
+        if (type.isAnnotationPresent(NativeStructure.class)) {
+            if (!type.isInstance(value)) {
+                throw new IllegalArgumentException(
+                        "Expected native structure: " + type.getName()
+                );
+            }
+
+            return NativeStructureHandler.getSegment(value);
+        }
+
         if (type == String.class) {
             return arena.allocateFrom((String) value);
         }
 
-        if (type == MemorySegment.class) return value;
+        if (type == MemorySegment.class) {
+            return value;
+        }
 
         if (type == char.class || type == Character.class) {
             return (short) ((Character) value).charValue();
@@ -46,19 +62,22 @@ public final class NativeValueConverter {
     public static Object fromNative(Class<?> type, Object value) {
         if (type == void.class) return null;
 
+        if (type.isAnnotationPresent(NativeStructure.class)) {
+            throw new IllegalArgumentException(
+                    "Native structure return values are not supported yet: "
+                            + type.getName()
+            );
+        }
+
         if (type == String.class) {
             MemorySegment segment = (MemorySegment) value;
 
-            if (segment.address() == 0) {
-                return null;
-            }
+            if (segment.address() == 0) return null;
 
             return segment.reinterpret(MAX_STRING_BYTES).getString(0);
         }
 
-        if (type == MemorySegment.class) {
-            return value;
-        }
+        if (type == MemorySegment.class) return value;
 
         if (type == char.class || type == Character.class) {
             return (char) ((short) value);
@@ -101,8 +120,6 @@ public final class NativeValueConverter {
             }
         }
 
-        throw new IllegalArgumentException(
-                "Unknown native enum value: " + value
-        );
+        throw new IllegalArgumentException("Unknown native enum value: " + value);
     }
 }
