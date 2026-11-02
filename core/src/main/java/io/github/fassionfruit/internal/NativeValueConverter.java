@@ -2,24 +2,38 @@ package io.github.fassionfruit.internal;
 
 import io.github.fassionfruit.annotation.NativeEnumValue;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.reflect.Field;
 
 public final class NativeValueConverter {
 
+    private static final long MAX_STRING_BYTES = 1024 * 1024;
+
     private NativeValueConverter() {
     }
 
-    public static Object toNative(Class<?> type, Object value) {
+    public static Object toNative(Class<?> type, Object value, Arena arena) {
         if (value == null) {
+            if (type == String.class || type == MemorySegment.class) {
+                return MemorySegment.NULL;
+            }
+
             return null;
+        }
+
+        if (type == String.class) {
+            return arena.allocateFrom((String) value);
+        }
+
+        if (type == MemorySegment.class) return value;
+
+        if (type == char.class || type == Character.class) {
+            return (short) ((Character) value).charValue();
         }
 
         if (type == boolean.class || type == Boolean.class) {
             return (boolean) value ? 1 : 0;
-        }
-
-        if (type == char.class || type == Character.class) {
-            return (short) ((Character) value).charValue();
         }
 
         if (type.isEnum()) {
@@ -30,16 +44,28 @@ public final class NativeValueConverter {
     }
 
     public static Object fromNative(Class<?> type, Object value) {
-        if (type == void.class) {
-            return null;
+        if (type == void.class) return null;
+
+        if (type == String.class) {
+            MemorySegment segment = (MemorySegment) value;
+
+            if (segment.address() == 0) {
+                return null;
+            }
+
+            return segment.reinterpret(MAX_STRING_BYTES).getString(0);
         }
 
-        if (type == boolean.class || type == Boolean.class) {
-            return ((int) value) != 0;
+        if (type == MemorySegment.class) {
+            return value;
         }
 
         if (type == char.class || type == Character.class) {
             return (char) ((short) value);
+        }
+
+        if (type == boolean.class || type == Boolean.class) {
+            return ((int) value) != 0;
         }
 
         if (type.isEnum()) {
@@ -52,9 +78,7 @@ public final class NativeValueConverter {
     private static int getEnumValue(Enum<?> value) {
         try {
             Field field = value.getDeclaringClass().getField(value.name());
-            NativeEnumValue annotation = field.getAnnotation(
-                    NativeEnumValue.class
-            );
+            NativeEnumValue annotation = field.getAnnotation(NativeEnumValue.class);
 
             if (annotation == null) {
                 throw new IllegalArgumentException(

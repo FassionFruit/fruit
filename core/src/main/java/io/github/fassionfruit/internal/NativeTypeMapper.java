@@ -2,6 +2,7 @@ package io.github.fassionfruit.internal;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.MemoryLayout;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Method;
 
@@ -35,6 +36,7 @@ public final class NativeTypeMapper {
 
     private static MemoryLayout map(Class<?> type) {
         if (type.isEnum()) return ValueLayout.JAVA_INT;
+        if (type == String.class || type == MemorySegment.class) return ValueLayout.ADDRESS;
         if (type == byte.class) return ValueLayout.JAVA_BYTE;
         if (type == short.class || type == char.class) return ValueLayout.JAVA_SHORT;
         if (type == int.class || type == boolean.class) return ValueLayout.JAVA_INT;

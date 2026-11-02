@@ -11,7 +11,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,9 +30,7 @@ public final class NativeLoader {
             );
         }
 
-        Path libraryPath = Path.of(libraryName)
-                .toAbsolutePath()
-                .normalize();
+        Path libraryPath = Path.of(libraryName).toAbsolutePath().normalize();
 
         if (!Files.isRegularFile(libraryPath)) {
             throw new IllegalArgumentException(
@@ -74,19 +72,13 @@ public final class NativeLoader {
         }
 
         @Override
-        public Object invoke(
-                Object proxy,
-                Method method,
-                Object[] args
-        ) throws Throwable {
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
             if (method.getDeclaringClass() == Object.class) {
                 return switch (method.getName()) {
                     case "toString" ->
                             "NativeProxy(" + proxy.getClass().getInterfaces()[0].getName() + ")";
-                    case "hashCode" ->
-                            System.identityHashCode(proxy);
-                    case "equals" ->
-                            proxy == (args == null ? null : args[0]);
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == (args == null ? null : args[0]);
                     default -> null;
                 };
             }
@@ -96,22 +88,29 @@ public final class NativeLoader {
                     this::createHandle
             );
 
-            Class<?>[] parameterTypes = method.getParameterTypes();
-            Object[] nativeArguments = new Object[parameterTypes.length];
+            try (Arena arena = Arena.ofConfined()) {
+                List<Object> nativeArguments = new ArrayList<>();
+                Class<?>[] parameterTypes = method.getParameterTypes();
 
-            for (int i = 0; i < parameterTypes.length; i++) {
-                nativeArguments[i] = NativeValueConverter.toNative(
-                        parameterTypes[i],
-                        args[i]
+                if (args != null) {
+                    for (int i = 0; i < parameterTypes.length; i++) {
+                        nativeArguments.add(
+                                NativeValueConverter.toNative(
+                                        parameterTypes[i],
+                                        args[i],
+                                        arena
+                                )
+                        );
+                    }
+                }
+
+                Object result = handle.invokeWithArguments(nativeArguments);
+
+                return NativeValueConverter.fromNative(
+                        method.getReturnType(),
+                        result
                 );
             }
-
-            Object result = handle.invokeWithArguments(nativeArguments);
-
-            return NativeValueConverter.fromNative(
-                    method.getReturnType(),
-                    result
-            );
         }
 
         private MethodHandle createHandle(Method method) {

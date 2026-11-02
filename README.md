@@ -1,23 +1,97 @@
-# fruit
 
-This project uses [Gradle](https://gradle.org/).
-To build and run the application, use the *Gradle* tool window by clicking the Gradle icon in the right-hand toolbar,
-or run it directly from the terminal:
+# FassionFruit
 
-* Run `./gradlew run` to build and run the application.
-* Run `./gradlew build` to only build the application.
-* Run `./gradlew check` to run all checks, including tests.
-* Run `./gradlew clean` to clean all build outputs.
+**A binding library for Java's Foreign Function & Memory API.**
 
-Note the usage of the Gradle Wrapper (`./gradlew`).
-This is the suggested way to use Gradle in production projects.
+FassionFruit makes calling native functions from Java and Kotlin easier through interfaces and annotations.
 
-[Learn more about the Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html).
+Instead of manually handling native library loading, symbol lookup, function descriptors, and method handles, you can define a Java or Kotlin interface and let FassionFruit handle the binding.
 
-[Learn more about Gradle tasks](https://docs.gradle.org/current/userguide/command_line_interface.html#common_tasks).
+## Features
 
-This project follows the suggested multi-module setup and consists of the `app` and `utils` subprojects.
-The shared build logic was extracted to a convention plugin located in `buildSrc`.
+- Annotation-based native library declarations
+- Native symbol lookup
+- Interface-based native function bindings
+- Java and Kotlin API compatibility
+- Built on Java's Foreign Function & Memory API
 
-This project uses a version catalog (see `gradle/libs.versions.toml`) to declare and version dependencies
-and both a build cache and a configuration cache (see `gradle.properties`).
+## Example
+
+```java
+@NativeLibrary("mylib")
+public interface MyLibrary {
+
+    @NativeSymbol("calculate_value")
+    int calculate(int input);
+
+    @NativeSymbol("add_values")
+    int add(int a, int b);
+}
+```
+
+Load the native library and invoke its functions:
+
+```java
+MyLibrary lib = FFM.load(MyLibrary.class);
+
+int result = lib.add(3, 2);
+System.out.println(result);
+```
+
+## Requirements
+
+- JDK 26
+- Gradle Wrapper
+
+FassionFruit uses the Java Foreign Function & Memory API.
+
+## Project Structure
+
+| Module | Description |
+|---|---|
+| `api` | Public annotations and API declarations |
+| `core` | Core FFM implementation |
+| `utils` | Internal utilities |
+| `buildSrc` | Shared Gradle build logic |
+| `samples` | Native library samples |
+
+## Building
+
+Clone the repository:
+
+```bash
+git clone https://github.com/FassionFruit/fruit.git
+cd fruit
+```
+
+Build the project:
+
+```bash
+./gradlew build
+```
+
+Run tests:
+
+```bash
+./gradlew test
+```
+
+On Windows:
+
+```powershell
+.\gradlew.bat build
+```
+
+Some native integration tests may require platform-specific native libraries.
+
+## Project Status
+
+FassionFruit is currently under active development.
+
+The `0.1.0` development milestone includes basic native library loading, symbol lookup, and primitive argument and return-value handling.
+
+APIs and implementation details may change between releases.
+
+## License
+
+FassionFruit is licensed under the [Apache License 2.0](LICENSE).
