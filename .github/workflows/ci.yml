@@ -29,6 +29,11 @@ jobs:
           distribution: temurin
           java-version: '26'
 
+      - name: Build native libraries
+        run: |
+          gcc -shared -fPIC native/test.c -o native/test.so
+          gcc -shared -fPIC native/strings.c -o native/strings.so
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 

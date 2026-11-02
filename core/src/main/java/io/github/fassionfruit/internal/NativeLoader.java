@@ -30,13 +30,7 @@ public final class NativeLoader {
             );
         }
 
-        Path libraryPath = Path.of(libraryName).toAbsolutePath().normalize();
-
-        if (!Files.isRegularFile(libraryPath)) {
-            throw new IllegalArgumentException(
-                    "Native library does not exist: " + libraryPath
-            );
-        }
+        Path libraryPath = NativeLibraryResolver.resolve(libraryName);
 
         Arena arena = Arena.ofAuto();
 

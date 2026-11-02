@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.MemorySegment;
 
-@NativeLibrary("../native/strings.dll")
+@NativeLibrary("../native/strings")
 public interface TestLibrary {
 
     @NativeSymbol("get_message")

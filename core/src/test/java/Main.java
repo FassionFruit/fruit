@@ -4,7 +4,7 @@ import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import org.junit.jupiter.api.Test;
 
-@NativeLibrary("../native/test.dll")
+@NativeLibrary("../native/test")
 public interface TestLibrary {
     @NativeSymbol("calculate_value")
     int calculate(int input);
