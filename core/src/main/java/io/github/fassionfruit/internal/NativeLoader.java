@@ -1,24 +1,24 @@
 package io.github.fassionfruit.internal;
 
+import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeSymbol;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class NativeLoader {
 
     private static final Linker LINKER = Linker.nativeLinker();
+    private static final Object[] EMPTY_ARGUMENTS = new Object[0];
 
     private NativeLoader() {
     }
@@ -31,7 +31,6 @@ public final class NativeLoader {
         }
 
         Path libraryPath = NativeLibraryResolver.resolve(libraryName);
-
         Arena arena = Arena.ofAuto();
 
         SymbolLookup lookup;
@@ -59,55 +58,92 @@ public final class NativeLoader {
     private static class NativeInvocationHandler implements InvocationHandler {
 
         private final SymbolLookup lookup;
-        private final Map<Method, MethodHandle> handles = new ConcurrentHashMap<>();
+        private final Map<Method, InvocationPlan> plans =
+                new ConcurrentHashMap<>();
 
         private NativeInvocationHandler(SymbolLookup lookup) {
             this.lookup = lookup;
         }
 
         @Override
-        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+        public Object invoke(
+                Object proxy,
+                Method method,
+                Object[] args
+        ) throws Throwable {
             if (method.getDeclaringClass() == Object.class) {
                 return switch (method.getName()) {
                     case "toString" ->
-                            "NativeProxy(" + proxy.getClass().getInterfaces()[0].getName() + ")";
+                            "NativeProxy(" +
+                                    proxy.getClass().getInterfaces()[0].getName() +
+                                    ")";
                     case "hashCode" -> System.identityHashCode(proxy);
                     case "equals" -> proxy == (args == null ? null : args[0]);
                     default -> null;
                 };
             }
 
-            MethodHandle handle = handles.computeIfAbsent(
+            InvocationPlan plan = plans.computeIfAbsent(
                     method,
-                    this::createHandle
+                    this::createPlan
             );
 
-            try (Arena arena = Arena.ofConfined()) {
-                List<Object> nativeArguments = new ArrayList<>();
-                Class<?>[] parameterTypes = method.getParameterTypes();
+            Class<?>[] parameterTypes = plan.parameterTypes;
+            Object[] nativeArguments = parameterTypes.length == 0
+                    ? EMPTY_ARGUMENTS
+                    : new Object[parameterTypes.length];
 
-                if (args != null) {
-                    for (int i = 0; i < parameterTypes.length; i++) {
-                        nativeArguments.add(
-                                NativeValueConverter.toNative(
-                                        parameterTypes[i],
-                                        args[i],
-                                        arena
-                                )
-                        );
-                    }
+            if (plan.requiresArena) {
+                try (Arena arena = Arena.ofConfined()) {
+                    convertArguments(
+                            parameterTypes,
+                            args,
+                            nativeArguments,
+                            arena
+                    );
+
+                    return invokeNative(plan, nativeArguments);
                 }
+            }
 
-                Object result = handle.invokeWithArguments(nativeArguments);
+            convertArguments(
+                    parameterTypes,
+                    args,
+                    nativeArguments,
+                    null
+            );
 
-                return NativeValueConverter.fromNative(
-                        method.getReturnType(),
-                        result
+            return invokeNative(plan, nativeArguments);
+        }
+
+        private void convertArguments(
+                Class<?>[] parameterTypes,
+                Object[] args,
+                Object[] nativeArguments,
+                Arena arena
+        ) {
+            for (int i = 0; i < parameterTypes.length; i++) {
+                nativeArguments[i] = NativeValueConverter.toNative(
+                        parameterTypes[i],
+                        args[i],
+                        arena
                 );
             }
         }
 
-        private MethodHandle createHandle(Method method) {
+        private Object invokeNative(
+                InvocationPlan plan,
+                Object[] arguments
+        ) throws Throwable {
+            Object result = plan.invoker.invokeExact(arguments);
+
+            return NativeValueConverter.fromNative(
+                    plan.returnType,
+                    result
+            );
+        }
+
+        private InvocationPlan createPlan(Method method) {
             NativeSymbol annotation = method.getAnnotation(NativeSymbol.class);
 
             if (annotation == null) {
@@ -124,9 +160,58 @@ public final class NativeLoader {
                     )
             );
 
-            var descriptor = NativeTypeMapper.createDescriptor(method);
+            Class<?>[] parameterTypes = method.getParameterTypes();
 
-            return LINKER.downcallHandle(symbol, descriptor);
+            MethodHandle invoker = LINKER.downcallHandle(
+                    symbol,
+                    NativeTypeMapper.createDescriptor(method)
+            );
+
+            invoker = invoker
+                    .asSpreader(Object[].class, parameterTypes.length)
+                    .asType(
+                            MethodType.methodType(
+                                    Object.class,
+                                    Object[].class
+                            )
+                    );
+
+            boolean requiresArena = false;
+
+            for (Class<?> parameterType : parameterTypes) {
+                if (parameterType == String.class
+                        || parameterType.isAnnotationPresent(NativeCallback.class)) {
+                    requiresArena = true;
+                    break;
+                }
+            }
+
+            return new InvocationPlan(
+                    invoker,
+                    parameterTypes,
+                    method.getReturnType(),
+                    requiresArena
+            );
+        }
+    }
+
+    private static class InvocationPlan {
+
+        private final MethodHandle invoker;
+        private final Class<?>[] parameterTypes;
+        private final Class<?> returnType;
+        private final boolean requiresArena;
+
+        private InvocationPlan(
+                MethodHandle invoker,
+                Class<?>[] parameterTypes,
+                Class<?> returnType,
+                boolean requiresArena
+        ) {
+            this.invoker = invoker;
+            this.parameterTypes = parameterTypes;
+            this.returnType = returnType;
+            this.requiresArena = requiresArena;
         }
     }
 }
