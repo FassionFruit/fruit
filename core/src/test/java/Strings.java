@@ -4,6 +4,9 @@ import io.github.fassionfruit.annotation.NativeSymbol;
 import org.junit.jupiter.api.Test;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @NativeLibrary("../native/strings")
 public interface TestLibrary {
@@ -26,10 +29,14 @@ void main() {
     System.out.println("========[Strings]========");
     var library = FFM.load(TestLibrary.class);
 
-    System.out.println(library.getMessage());
-    System.out.println(library.echoString("FassionFruit"));
-    System.out.println(library.getStringLength("Hello"));
+    assertEquals("Hello from native!", library.getMessage());
+    assertEquals("FassionFruit", library.echoString("FassionFruit"));
+    assertEquals(5, library.getStringLength("Hello"));
 
     MemorySegment pointer = library.getPointer();
-    System.out.println(pointer);
+    assertEquals(
+            1234,
+            pointer.reinterpret(Integer.BYTES)
+                    .get(ValueLayout.JAVA_INT, 0)
+    );
 }

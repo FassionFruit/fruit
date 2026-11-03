@@ -159,7 +159,9 @@ public final class NativeStructureLayout {
     }
 
     public static MemoryLayout map(Class<?> type) {
-        if (type == MemorySegment.class) return ValueLayout.ADDRESS;
+        if (type == String.class || type == MemorySegment.class) {
+            return ValueLayout.ADDRESS;
+        }
 
         if (type.isAnnotationPresent(NativeStructure.class)) {
             return create(type);

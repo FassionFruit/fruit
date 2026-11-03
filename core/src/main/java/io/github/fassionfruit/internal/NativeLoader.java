@@ -2,6 +2,7 @@ package io.github.fassionfruit.internal;
 
 import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeSymbol;
+import io.github.fassionfruit.annotation.structure.NativeField;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.Linker;
@@ -13,7 +14,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashMap;
 
 public final class NativeLoader {
 
@@ -44,7 +45,7 @@ public final class NativeLoader {
             );
         }
 
-        InvocationHandler handler = new NativeInvocationHandler(lookup);
+        InvocationHandler handler = new NativeInvocationHandler(type, lookup);
 
         Object proxy = Proxy.newProxyInstance(
                 type.getClassLoader(),
@@ -58,11 +59,18 @@ public final class NativeLoader {
     private static class NativeInvocationHandler implements InvocationHandler {
 
         private final SymbolLookup lookup;
-        private final Map<Method, InvocationPlan> plans =
-                new ConcurrentHashMap<>();
+        private final Map<Method, InvocationPlan> plans = new HashMap<>();
 
-        private NativeInvocationHandler(SymbolLookup lookup) {
+        private NativeInvocationHandler(Class<?> type, SymbolLookup lookup) {
             this.lookup = lookup;
+
+            for (Method method : type.getMethods()) {
+                if (method.isAnnotationPresent(NativeField.class)) {
+                    continue;
+                }
+
+                plans.put(method, createPlan(method));
+            }
         }
 
         @Override
@@ -83,12 +91,20 @@ public final class NativeLoader {
                 };
             }
 
-            InvocationPlan plan = plans.computeIfAbsent(
-                    method,
-                    this::createPlan
-            );
+            InvocationPlan plan = plans.get(method);
+            if (plan == null) {
+                throw new IllegalStateException(
+                        method.getName() + " is missing @NativeSymbol"
+                );
+            }
 
             Class<?>[] parameterTypes = plan.parameterTypes;
+            if (plan.primitiveOnly) {
+                return plan.invoker.invokeExact(
+                        args == null ? EMPTY_ARGUMENTS : args
+                );
+            }
+
             Object[] nativeArguments = parameterTypes.length == 0
                     ? EMPTY_ARGUMENTS
                     : new Object[parameterTypes.length];
@@ -186,12 +202,34 @@ public final class NativeLoader {
                 }
             }
 
+            boolean primitiveOnly = isConversionFreePrimitive(method.getReturnType())
+                    && allParametersAreConversionFreePrimitives(parameterTypes);
+
             return new InvocationPlan(
                     invoker,
                     parameterTypes,
                     method.getReturnType(),
-                    requiresArena
+                    requiresArena,
+                    primitiveOnly
             );
+        }
+
+        private boolean allParametersAreConversionFreePrimitives(
+                Class<?>[] parameterTypes
+        ) {
+            for (Class<?> parameterType : parameterTypes) {
+                if (!isConversionFreePrimitive(parameterType)) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private boolean isConversionFreePrimitive(Class<?> type) {
+            return type.isPrimitive()
+                    && type != boolean.class
+                    && type != char.class;
         }
     }
 
@@ -201,17 +239,20 @@ public final class NativeLoader {
         private final Class<?>[] parameterTypes;
         private final Class<?> returnType;
         private final boolean requiresArena;
+        private final boolean primitiveOnly;
 
         private InvocationPlan(
                 MethodHandle invoker,
                 Class<?>[] parameterTypes,
                 Class<?> returnType,
-                boolean requiresArena
+                boolean requiresArena,
+                boolean primitiveOnly
         ) {
             this.invoker = invoker;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.requiresArena = requiresArena;
+            this.primitiveOnly = primitiveOnly;
         }
     }
 }

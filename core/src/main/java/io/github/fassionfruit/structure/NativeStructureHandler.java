@@ -4,6 +4,7 @@ import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.structure.NativeField;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
@@ -16,13 +17,25 @@ import java.util.Map;
 
 public final class NativeStructureHandler implements InvocationHandler {
 
+    private static final long MAX_STRING_BYTES = 1024 * 1024;
+
     private final Class<?> type;
     private final MemorySegment segment;
+    private final Arena stringArena;
     private final Map<Method, FieldInfo> fields = new HashMap<>();
 
     public NativeStructureHandler(Class<?> type, MemorySegment segment) {
+        this(type, segment, Arena.ofAuto());
+    }
+
+    public NativeStructureHandler(
+            Class<?> type,
+            MemorySegment segment,
+            Arena stringArena
+    ) {
         this.type = type;
         this.segment = segment;
+        this.stringArena = stringArena;
 
         for (Method method : type.getMethods()) {
             NativeField annotation = method.getAnnotation(NativeField.class);
@@ -56,6 +69,14 @@ public final class NativeStructureHandler implements InvocationHandler {
     }
 
     public static <T> T create(Class<T> type, MemorySegment segment) {
+        return create(type, segment, Arena.ofAuto());
+    }
+
+    public static <T> T create(
+            Class<T> type,
+            MemorySegment segment,
+            Arena stringArena
+    ) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(
                     type.getName() + " must be an interface"
@@ -71,7 +92,7 @@ public final class NativeStructureHandler implements InvocationHandler {
         return type.cast(Proxy.newProxyInstance(
                 type.getClassLoader(),
                 new Class<?>[]{type},
-                new NativeStructureHandler(type, segment)
+                new NativeStructureHandler(type, segment, stringArena)
         ));
     }
 
@@ -121,6 +142,15 @@ public final class NativeStructureHandler implements InvocationHandler {
     private void write(FieldInfo field, Object value) {
         Class<?> fieldType = field.type();
         long offset = field.offset();
+
+        if (fieldType == String.class) {
+            MemorySegment pointer = value == null
+                    ? MemorySegment.NULL
+                    : stringArena.allocateFrom((String) value);
+
+            segment.set(ValueLayout.ADDRESS, offset, pointer);
+            return;
+        }
 
         if (fieldType == MemorySegment.class) {
             MemorySegment pointer = value == null
@@ -201,6 +231,16 @@ public final class NativeStructureHandler implements InvocationHandler {
     private Object read(FieldInfo field) {
         Class<?> fieldType = field.type();
         long offset = field.offset();
+
+        if (fieldType == String.class) {
+            MemorySegment pointer = segment.get(ValueLayout.ADDRESS, offset);
+
+            if (pointer.address() == 0) {
+                return null;
+            }
+
+            return pointer.reinterpret(MAX_STRING_BYTES).getString(0);
+        }
 
         if (fieldType == MemorySegment.class) {
             return segment.get(ValueLayout.ADDRESS, offset);

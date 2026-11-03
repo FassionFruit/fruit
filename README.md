@@ -60,6 +60,16 @@ dependencies {
 ```
 
 Define an interface representing a native library:
+```c
+int32_t calculate_value(int32_t input) {
+    return input * 2;
+}
+
+int32_t add_values(int32_t a, int32_t b) {
+    return a + b;
+}
+```
+
 
 ```java
 import io.github.fassionfruit.annotation.NativeLibrary;
@@ -91,7 +101,7 @@ FassionFruit handles the binding process internally, allowing you to call native
 
 ## Requirements
 
-- JDK 26
+- JDK 25
 - A compatible native library
 - A native library exposing the expected symbols
 
@@ -125,8 +135,8 @@ Run tests:
 On Windows:
 
 ```powershell
-.\\gradlew.bat build
-.\\gradlew.bat test
+.\gradlew.bat build
+.\gradlew.bat test
 ```
 
 Some integration tests require a C compiler to build native test libraries.

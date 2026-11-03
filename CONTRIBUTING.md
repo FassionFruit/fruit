@@ -19,7 +19,7 @@ Before contributing:
 
 The project requires:
 
-- JDK 26
+- JDK 25
 - Gradle Wrapper
 - A C compiler for native integration tests
 

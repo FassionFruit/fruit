@@ -50,7 +50,7 @@ public final class FFM {
                 NativeStructureLayout.create(type)
         );
 
-        return NativeStructureHandler.create(type, segment);
+        return NativeStructureHandler.create(type, segment, arena);
     }
 
     public static <T> MemorySegment export(

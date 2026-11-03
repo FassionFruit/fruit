@@ -135,9 +135,15 @@ void main() {
         data.setId(1);
         data.setValues(values);
         data.setCount(3);
+        data.setName("FassionFruit");
 
         assertEquals(values.address(), data.getValues().address());
         assertEquals(3, data.getCount());
+        assertEquals("FassionFruit", data.getName());
+        data.setValues(null);
+        data.setName(null);
+        assertEquals(0, data.getValues().address());
+        assertEquals(null, data.getName());
     }
 }
 
@@ -160,4 +166,10 @@ public interface Data {
 
     @NativeField(value = "count", order = 2)
     void setCount(int count);
+
+    @NativeField(value = "name", order = 3)
+    String getName();
+
+    @NativeField(value = "name", order = 3)
+    void setName(String name);
 }

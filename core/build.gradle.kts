@@ -1,10 +1,5 @@
 plugins {
-    // Apply the shared build logic from a convention plugin.
-    // The shared code is located in `buildSrc/src/main/kotlin/kotlin-jvm.gradle.kts`.
-    id("buildsrc.convention.kotlin-jvm")
-
-    // Apply the Application plugin to add support for building an executable JVM application.
-    application
+    id("buildsrc.convention.java-jvm")
 }
 
 dependencies {
@@ -13,12 +8,6 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-application {
-    // Define the Fully Qualified Name for the application main class
-    // (Note that Kotlin compiles `App.kt` to a class with FQN `com.example.app.AppKt`.)
-    mainClass = "io.github.fassionfruit.core.coreKt"
 }
 
 tasks.test {

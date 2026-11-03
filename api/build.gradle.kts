@@ -2,8 +2,8 @@ plugins {
     id("java")
 }
 
-group = "io.github.fassionfruit"
-version = "0.2.0"
+group = rootProject.group
+version = rootProject.version
 
 repositories {
     mavenCentral()
