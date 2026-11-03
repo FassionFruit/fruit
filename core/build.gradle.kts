@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":api"))
+    api(project(":api"))
 
     testImplementation(platform("org.junit:junit-bom:6.0.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
