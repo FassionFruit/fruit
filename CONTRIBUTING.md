@@ -90,9 +90,9 @@ Tests should cover:
 
 ## Use of AI Tools
 
-The use of AI tools is permitted and not discouraged when contributing to FassionFruit.
+The use of AI tools is permitted when contributing to FassionFruit.
 
-However, contributors are fully responsible for all code and content they submit, regardless of whether they were created with the assistance of AI tools.
+However, contributors are fully responsible for all contributions they submit, including any code or content generated with the assistance of AI tools.
 
 Contributors must ensure that:
 
