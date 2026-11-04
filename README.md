@@ -41,6 +41,7 @@ Java provides multiple ways to interact with native code. Each approach has its 
 - **Type conversion** — Convert supported Java types to and from native representations.
 - **Enum mapping** — Map Java enums to native values using `@NativeEnumValue`.
 - **Native callbacks** — Expose Java functional interfaces to native code using `@NativeCallback`.
+- **Native error state** — Capture C `errno` for selected calls using `@NativeErrno` and `FFM.lastErrno()`.
 - **Native structures** — Map Java interfaces to native structures using `@NativeStructure` and `@NativeField`.
 - **JVM structure export** — Export Java-side structure implementations to native memory using `@JvmStructure`.
 

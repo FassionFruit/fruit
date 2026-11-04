@@ -12,8 +12,12 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class JvmStructureLayout {
+
+    private static final ConcurrentHashMap<Class<?>, MemoryLayout> CACHE =
+            new ConcurrentHashMap<>();
 
     private JvmStructureLayout() {
     }
@@ -31,6 +35,10 @@ public final class JvmStructureLayout {
             );
         }
 
+        return CACHE.computeIfAbsent(type, JvmStructureLayout::createLayout);
+    }
+
+    private static MemoryLayout createLayout(Class<?> type) {
         List<Method> methods = getMethods(type);
 
         MemoryLayout[] layouts = new MemoryLayout[methods.size() + 1];
