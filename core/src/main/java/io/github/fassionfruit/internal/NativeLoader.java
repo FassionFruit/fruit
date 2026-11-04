@@ -17,6 +17,8 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.HashMap;
 
+import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
+
 public final class NativeLoader {
 
     private static final Linker LINKER = Linker.nativeLinker();

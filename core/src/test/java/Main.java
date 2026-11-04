@@ -2,14 +2,15 @@ import io.github.fassionfruit.FFM;
 import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeErrno;
 import io.github.fassionfruit.annotation.NativeEnumValue;
+import io.github.fassionfruit.annotation.NativeErrno;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import org.junit.jupiter.api.Test;
 
 @NativeLibrary("../native/test")
 public interface TestLibrary {
-    @NativeErrno
     @NativeSymbol("calculate_value")
+    @NativeErrno
     int calculate(int input);
 
     @NativeSymbol("add_values")
