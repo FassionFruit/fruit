@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test;
 
 @NativeLibrary("../native/test")
 public interface TestLibrary {
-    @NativeErrno
     @NativeSymbol("calculate_value")
     @NativeErrno
     int calculate(int input);
