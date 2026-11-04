@@ -19,12 +19,16 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class NativeValueConverter {
 
     private static final long MAX_STRING_BYTES = 1024 * 1024;
 
     private static final Linker LINKER = Linker.nativeLinker();
+    private static final MethodHandle INVOKE_CALLBACK = createCallbackInvoker();
+    private static final ConcurrentHashMap<Class<?>, CallbackPlan> CALLBACK_PLANS =
+            new ConcurrentHashMap<>();
 
     private NativeValueConverter() {
     }
@@ -131,15 +135,34 @@ public final class NativeValueConverter {
             Object callback,
             Arena arena
     ) {
-        Method callbackMethod = findCallbackMethod(type);
+        CallbackPlan plan = CALLBACK_PLANS.computeIfAbsent(
+                type,
+                NativeValueConverter::createCallbackPlan
+        );
 
-        FunctionDescriptor descriptor =
-                NativeTypeMapper.createDescriptor(callbackMethod);
+        MethodHandle target = MethodHandles.insertArguments(
+                INVOKE_CALLBACK,
+                0,
+                callback,
+                plan.method(),
+                arena
+        );
 
-        MethodHandle target;
+        target = target.asCollector(Object[].class, plan.method().getParameterCount());
+        target = target.asType(plan.methodType());
 
+        return LINKER.upcallStub(target, plan.descriptor(), arena);
+    }
+
+    private static CallbackPlan createCallbackPlan(Class<?> type) {
+        Method method = findCallbackMethod(type);
+        FunctionDescriptor descriptor = NativeTypeMapper.createDescriptor(method);
+        return new CallbackPlan(method, descriptor, toMethodType(descriptor));
+    }
+
+    private static MethodHandle createCallbackInvoker() {
         try {
-            target = MethodHandles.lookup().findStatic(
+            return MethodHandles.lookup().findStatic(
                     NativeValueConverter.class,
                     "invokeCallback",
                     MethodType.methodType(
@@ -151,28 +174,8 @@ public final class NativeValueConverter {
                     )
             );
         } catch (NoSuchMethodException | IllegalAccessException exception) {
-            throw new IllegalStateException(
-                    "Failed to create native callback",
-                    exception
-            );
+            throw new ExceptionInInitializerError(exception);
         }
-
-        target = MethodHandles.insertArguments(
-                target,
-                0,
-                callback,
-                callbackMethod,
-                arena
-        );
-
-        target = target.asCollector(
-                Object[].class,
-                callbackMethod.getParameterCount()
-        );
-
-        target = target.asType(toMethodType(descriptor));
-
-        return LINKER.upcallStub(target, descriptor, arena);
     }
 
     private static Method findCallbackMethod(Class<?> type) {
@@ -298,5 +301,12 @@ public final class NativeValueConverter {
         }
 
         throw new IllegalArgumentException("Unknown native enum value: " + value);
+    }
+
+    private record CallbackPlan(
+            Method method,
+            FunctionDescriptor descriptor,
+            MethodType methodType
+    ) {
     }
 }
