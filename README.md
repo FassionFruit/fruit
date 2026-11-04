@@ -33,18 +33,6 @@ Java provides multiple ways to interact with native code. Each approach has its 
 - ⚠️ Possible, but requires additional implementation or manual work
 - ❌ Not supported directly
 
-## Features
-
-- **Interface-based bindings** — Define native functions using Java interfaces.
-- **Annotation-driven symbol lookup** — Map Java methods to native symbols using `@NativeSymbol`.
-- **Native library loading** — Associate interfaces with native libraries using `@NativeLibrary`.
-- **Type conversion** — Convert supported Java types to and from native representations.
-- **Enum mapping** — Map Java enums to native values using `@NativeEnumValue`.
-- **Native callbacks** — Expose Java functional interfaces to native code using `@NativeCallback`.
-- **Native structures** — Map Java interfaces to native structures using `@NativeStructure` and `@NativeField`.
-- **JVM structure export** — Export Java-side structure implementations to native memory using `@JvmStructure`.
-
-
 ## Quick Start
 
 Dependencies
