@@ -15,12 +15,8 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class NativeStructureLayout {
-
-    private static final ConcurrentHashMap<Class<?>, GroupLayout> CACHE =
-            new ConcurrentHashMap<>();
 
     private NativeStructureLayout() {
     }
@@ -38,10 +34,6 @@ public final class NativeStructureLayout {
             );
         }
 
-        return CACHE.computeIfAbsent(type, NativeStructureLayout::createLayout);
-    }
-
-    private static GroupLayout createLayout(Class<?> type) {
         Map<String, FieldInfo> fields = new LinkedHashMap<>();
 
         for (Method method : type.getMethods()) {
