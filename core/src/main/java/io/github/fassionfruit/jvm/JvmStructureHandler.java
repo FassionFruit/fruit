@@ -19,6 +19,8 @@ import java.util.List;
 public final class JvmStructureHandler {
 
     private static final Linker LINKER = Linker.nativeLinker();
+    private static final MethodHandle INVOKE_JVM_METHOD =
+            createInvokeJvmMethodHandle();
 
     private JvmStructureHandler() {
     }
@@ -78,26 +80,7 @@ public final class JvmStructureHandler {
             FunctionDescriptor descriptor,
             Arena arena
     ) {
-        MethodHandle target;
-
-        try {
-            target = MethodHandles.lookup().findStatic(
-                    JvmStructureHandler.class,
-                    "invokeJvmMethod",
-                    MethodType.methodType(
-                            Object.class,
-                            Object.class,
-                            Method.class,
-                            Arena.class,
-                            Object[].class
-                    )
-            );
-        } catch (NoSuchMethodException | IllegalAccessException exception) {
-            throw new IllegalStateException(
-                    "Failed to create JVM method handle",
-                    exception
-            );
-        }
+        MethodHandle target = INVOKE_JVM_METHOD;
 
         target = MethodHandles.insertArguments(
                 target,
@@ -119,6 +102,24 @@ public final class JvmStructureHandler {
         );
 
         return target.asType(toMethodType(descriptor));
+    }
+
+    private static MethodHandle createInvokeJvmMethodHandle() {
+        try {
+            return MethodHandles.lookup().findStatic(
+                    JvmStructureHandler.class,
+                    "invokeJvmMethod",
+                    MethodType.methodType(
+                            Object.class,
+                            Object.class,
+                            Method.class,
+                            Arena.class,
+                            Object[].class
+                    )
+            );
+        } catch (NoSuchMethodException | IllegalAccessException exception) {
+            throw new ExceptionInInitializerError(exception);
+        }
     }
 
     private static Object invokeJvmMethod(

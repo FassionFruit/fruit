@@ -5,10 +5,8 @@ import io.github.fassionfruit.annotation.NativeErrno;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import io.github.fassionfruit.annotation.structure.NativeField;
 
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment;
-import java.lang.foreign.Linker;
-import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.*;
+import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
@@ -25,8 +23,10 @@ public final class NativeLoader {
 
     private static final Linker LINKER = Linker.nativeLinker();
     private static final Object[] EMPTY_ARGUMENTS = new Object[0];
+    private static final StructLayout CAPTURE_STATE_LAYOUT =
+            Linker.Option.captureStateLayout();
     private static final VarHandle ERRNO_HANDLE =
-            Linker.Option.captureStateLayout().varHandle(groupElement("errno"));
+            CAPTURE_STATE_LAYOUT.varHandle(PathElement.groupElement("errno"));
     private static final ThreadLocal<Integer> LAST_ERRNO =
             ThreadLocal.withInitial(() -> 0);
 
@@ -166,8 +166,9 @@ public final class NativeLoader {
                 Arena arena
         ) throws Throwable {
             MemorySegment capturedState = plan.captureErrno
-                    ? arena.allocate(Linker.Option.captureStateLayout())
+                    ? arena.allocate(CAPTURE_STATE_LAYOUT)
                     : null;
+
             Object result = plan.captureErrno
                     ? plan.invoker.invokeExact(capturedState, arguments)
                     : plan.invoker.invokeExact(arguments);
@@ -201,6 +202,7 @@ public final class NativeLoader {
 
             Class<?>[] parameterTypes = method.getParameterTypes();
             boolean captureErrno = method.isAnnotationPresent(NativeErrno.class);
+
             Linker.Option[] options = captureErrno
                     ? new Linker.Option[]{Linker.Option.captureCallState("errno")}
                     : new Linker.Option[0];
@@ -211,17 +213,26 @@ public final class NativeLoader {
                     options
             );
 
-            invoker = invoker.asSpreader(Object[].class, parameterTypes.length);
-            invoker = captureErrno
-                    ? invoker.asType(MethodType.methodType(
-                            Object.class,
-                            MemorySegment.class,
-                            Object[].class
-                    ))
-                    : invoker.asType(MethodType.methodType(
-                            Object.class,
-                            Object[].class
-                    ));
+            if (captureErrno) {
+                invoker = invoker
+                        .asSpreader(Object[].class, parameterTypes.length)
+                        .asType(
+                                MethodType.methodType(
+                                        Object.class,
+                                        MemorySegment.class,
+                                        Object[].class
+                                )
+                        );
+            } else {
+                invoker = invoker
+                        .asSpreader(Object[].class, parameterTypes.length)
+                        .asType(
+                                MethodType.methodType(
+                                        Object.class,
+                                        Object[].class
+                                )
+                        );
+            }
 
             boolean requiresArena = captureErrno;
 
