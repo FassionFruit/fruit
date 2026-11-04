@@ -33,6 +33,10 @@ public final class FFM {
         return NativeLoader.load(type, annotation.value());
     }
 
+    public static int lastErrno() {
+        return NativeLoader.lastErrno();
+    }
+
     public static <T> T allocateStructure(Class<T> type, Arena arena) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(

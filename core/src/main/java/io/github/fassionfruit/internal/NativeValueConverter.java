@@ -148,7 +148,11 @@ public final class NativeValueConverter {
                 arena
         );
 
-        target = target.asCollector(Object[].class, plan.method().getParameterCount());
+        target = target.asCollector(
+                Object[].class,
+                plan.method().getParameterCount()
+        );
+
         target = target.asType(plan.methodType());
 
         return LINKER.upcallStub(target, plan.descriptor(), arena);
@@ -157,7 +161,12 @@ public final class NativeValueConverter {
     private static CallbackPlan createCallbackPlan(Class<?> type) {
         Method method = findCallbackMethod(type);
         FunctionDescriptor descriptor = NativeTypeMapper.createDescriptor(method);
-        return new CallbackPlan(method, descriptor, toMethodType(descriptor));
+
+        return new CallbackPlan(
+                method,
+                descriptor,
+                toMethodType(descriptor)
+        );
     }
 
     private static MethodHandle createCallbackInvoker() {
