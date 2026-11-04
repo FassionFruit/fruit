@@ -1,14 +1,17 @@
 package io.github.fassionfruit.internal;
 
 import io.github.fassionfruit.annotation.NativeCallback;
+import io.github.fassionfruit.annotation.NativeErrno;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import io.github.fassionfruit.annotation.structure.NativeField;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -16,12 +19,22 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.HashMap;
 
+import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
+
 public final class NativeLoader {
 
     private static final Linker LINKER = Linker.nativeLinker();
     private static final Object[] EMPTY_ARGUMENTS = new Object[0];
+    private static final VarHandle ERRNO_HANDLE =
+            Linker.Option.captureStateLayout().varHandle(groupElement("errno"));
+    private static final ThreadLocal<Integer> LAST_ERRNO =
+            ThreadLocal.withInitial(() -> 0);
 
     private NativeLoader() {
+    }
+
+    public static int lastErrno() {
+        return LAST_ERRNO.get();
     }
 
     public static <T> T load(Class<T> type, String libraryName) {
@@ -99,7 +112,7 @@ public final class NativeLoader {
             }
 
             Class<?>[] parameterTypes = plan.parameterTypes;
-            if (plan.primitiveOnly) {
+            if (plan.primitiveOnly && !plan.captureErrno) {
                 return plan.invoker.invokeExact(
                         args == null ? EMPTY_ARGUMENTS : args
                 );
@@ -118,7 +131,7 @@ public final class NativeLoader {
                             arena
                     );
 
-                    return invokeNative(plan, nativeArguments);
+                    return invokeNative(plan, nativeArguments, arena);
                 }
             }
 
@@ -129,7 +142,7 @@ public final class NativeLoader {
                     null
             );
 
-            return invokeNative(plan, nativeArguments);
+            return invokeNative(plan, nativeArguments, null);
         }
 
         private void convertArguments(
@@ -149,9 +162,19 @@ public final class NativeLoader {
 
         private Object invokeNative(
                 InvocationPlan plan,
-                Object[] arguments
+                Object[] arguments,
+                Arena arena
         ) throws Throwable {
-            Object result = plan.invoker.invokeExact(arguments);
+            MemorySegment capturedState = plan.captureErrno
+                    ? arena.allocate(Linker.Option.captureStateLayout())
+                    : null;
+            Object result = plan.captureErrno
+                    ? plan.invoker.invokeExact(capturedState, arguments)
+                    : plan.invoker.invokeExact(arguments);
+
+            if (plan.captureErrno) {
+                LAST_ERRNO.set((int) ERRNO_HANDLE.get(capturedState, 0L));
+            }
 
             return NativeValueConverter.fromNative(
                     plan.returnType,
@@ -177,22 +200,30 @@ public final class NativeLoader {
             );
 
             Class<?>[] parameterTypes = method.getParameterTypes();
+            boolean captureErrno = method.isAnnotationPresent(NativeErrno.class);
+            Linker.Option[] options = captureErrno
+                    ? new Linker.Option[]{Linker.Option.captureCallState("errno")}
+                    : new Linker.Option[0];
 
             MethodHandle invoker = LINKER.downcallHandle(
                     symbol,
-                    NativeTypeMapper.createDescriptor(method)
+                    NativeTypeMapper.createDescriptor(method),
+                    options
             );
 
-            invoker = invoker
-                    .asSpreader(Object[].class, parameterTypes.length)
-                    .asType(
-                            MethodType.methodType(
-                                    Object.class,
-                                    Object[].class
-                            )
-                    );
+            invoker = invoker.asSpreader(Object[].class, parameterTypes.length);
+            invoker = captureErrno
+                    ? invoker.asType(MethodType.methodType(
+                            Object.class,
+                            MemorySegment.class,
+                            Object[].class
+                    ))
+                    : invoker.asType(MethodType.methodType(
+                            Object.class,
+                            Object[].class
+                    ));
 
-            boolean requiresArena = false;
+            boolean requiresArena = captureErrno;
 
             for (Class<?> parameterType : parameterTypes) {
                 if (parameterType == String.class
@@ -210,7 +241,8 @@ public final class NativeLoader {
                     parameterTypes,
                     method.getReturnType(),
                     requiresArena,
-                    primitiveOnly
+                    primitiveOnly,
+                    captureErrno
             );
         }
 
@@ -240,19 +272,22 @@ public final class NativeLoader {
         private final Class<?> returnType;
         private final boolean requiresArena;
         private final boolean primitiveOnly;
+        private final boolean captureErrno;
 
         private InvocationPlan(
                 MethodHandle invoker,
                 Class<?>[] parameterTypes,
                 Class<?> returnType,
                 boolean requiresArena,
-                boolean primitiveOnly
+                boolean primitiveOnly,
+                boolean captureErrno
         ) {
             this.invoker = invoker;
             this.parameterTypes = parameterTypes;
             this.returnType = returnType;
             this.requiresArena = requiresArena;
             this.primitiveOnly = primitiveOnly;
+            this.captureErrno = captureErrno;
         }
     }
 }
