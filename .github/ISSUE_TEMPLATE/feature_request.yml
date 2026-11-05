@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest an improvement or new capability.
+title: "[Feature]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the problem this would solve.
+        A proposed API or implementation is welcome, but not required.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and what limitation are you running into?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior or API you would like to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe any existing workaround or alternative.
+    validations:
+      required: false
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example
+      description: A small code example or API sketch.
+      render: java
+    validations:
+      required: false
