@@ -1,9 +1,12 @@
 package io.github.fassionfruit.internal;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+/** Resolves platform-specific native library names and paths. */
 public final class NativeLibraryResolver {
 
     private static final String OS = System.getProperty("os.name").toLowerCase();
@@ -11,7 +14,13 @@ public final class NativeLibraryResolver {
     private NativeLibraryResolver() {
     }
 
+    /** Resolves a library name to an existing native library path. */
     public static Path resolve(String libraryName) {
+        return resolve(libraryName, NativeLibraryResolver.class.getClassLoader());
+    }
+
+    /** Resolves a native library from the filesystem or a classpath resource. */
+    public static Path resolve(String libraryName, ClassLoader classLoader) {
         if (libraryName == null || libraryName.isBlank()) {
             throw new IllegalArgumentException("Library name cannot be empty");
         }
@@ -50,9 +59,38 @@ public final class NativeLibraryResolver {
             }
         }
 
+        String resourceName = "native/" + resolvedName;
+        InputStream resource = classLoader == null
+                ? ClassLoader.getSystemResourceAsStream(resourceName)
+                : classLoader.getResourceAsStream(resourceName);
+
+        if (resource != null) {
+            return extractResource(
+                    resource,
+                    Path.of(resolvedName).getFileName().toString()
+            );
+        }
+
         throw new IllegalArgumentException(
                 "Native library not found: " + resolvedName
         );
+    }
+
+    private static Path extractResource(InputStream resource, String fileName) {
+        try (resource) {
+            String suffix = fileName.contains(".")
+                    ? fileName.substring(fileName.lastIndexOf('.'))
+                    : ".native";
+            Path extracted = Files.createTempFile("fassionfruit-", suffix);
+            Files.copy(resource, extracted, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            extracted.toFile().deleteOnExit();
+            return extracted;
+        } catch (IOException exception) {
+            throw new IllegalStateException(
+                    "Failed to extract native library resource: " + fileName,
+                    exception
+            );
+        }
     }
 
     private static String addPlatformName(String name, boolean explicitPath) {

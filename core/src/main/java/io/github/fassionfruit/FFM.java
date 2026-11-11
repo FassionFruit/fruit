@@ -3,6 +3,7 @@ package io.github.fassionfruit;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.structure.JvmStructure;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.annotation.structure.NativeUnion;
 import io.github.fassionfruit.internal.NativeLoader;
 import io.github.fassionfruit.jvm.JvmStructureHandler;
 import io.github.fassionfruit.structure.NativeStructureHandler;
@@ -15,6 +16,7 @@ public final class FFM {
     private FFM() {
     }
 
+    /** Loads the native library declared by {@link NativeLibrary}. */
     public static <T> T load(Class<T> type) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(
@@ -33,10 +35,12 @@ public final class FFM {
         return NativeLoader.load(type, annotation.value());
     }
 
+    /** Returns the errno captured by the most recent native call on this thread. */
     public static int lastErrno() {
         return NativeLoader.lastErrno();
     }
 
+    /** Allocates a native structure or union in the supplied arena. */
     public static <T> T allocateStructure(Class<T> type, Arena arena) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(
@@ -44,9 +48,10 @@ public final class FFM {
             );
         }
 
-        if (!type.isAnnotationPresent(NativeStructure.class)) {
+        if (!type.isAnnotationPresent(NativeStructure.class)
+                && !type.isAnnotationPresent(NativeUnion.class)) {
             throw new IllegalArgumentException(
-                    type.getName() + " is missing @NativeStructure"
+                    type.getName() + " is missing @NativeStructure or @NativeUnion"
             );
         }
 
@@ -57,6 +62,7 @@ public final class FFM {
         return NativeStructureHandler.create(type, segment, arena);
     }
 
+    /** Exports an implementation as a native-callable JVM structure. */
     public static <T> MemorySegment export(
             Class<T> type,
             T implementation,

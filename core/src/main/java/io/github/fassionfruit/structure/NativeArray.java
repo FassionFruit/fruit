@@ -1,11 +1,13 @@
 package io.github.fassionfruit.structure;
 
 import io.github.fassionfruit.annotation.NativeEnumValue;
+import io.github.fassionfruit.annotation.structure.NativeUnion;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.reflect.Field;
 
+/** A bounded view over a fixed-size native array field. */
 public final class NativeArray<T> {
 
     private final Class<T> componentType;
@@ -25,10 +27,12 @@ public final class NativeArray<T> {
         this.stride = stride;
     }
 
+    /** Returns the number of elements in this native array. */
     public int length() {
         return length;
     }
 
+    /** Reads the element at {@code index}. */
     public T get(int index) {
         checkIndex(index);
 
@@ -36,7 +40,7 @@ public final class NativeArray<T> {
 
         if (componentType.isAnnotationPresent(
                 io.github.fassionfruit.annotation.structure.NativeStructure.class
-        )) {
+        ) || componentType.isAnnotationPresent(NativeUnion.class)) {
             return NativeStructureHandler.create(
                     componentType,
                     segment.asSlice(offset, stride)
@@ -45,7 +49,9 @@ public final class NativeArray<T> {
 
         Object value;
 
-        if (componentType == Byte.class) {
+        if (componentType == MemorySegment.class) {
+            value = segment.get(ValueLayout.ADDRESS, offset);
+        } else if (componentType == Byte.class) {
             value = segment.get(ValueLayout.JAVA_BYTE, offset);
         } else if (componentType == Short.class) {
             value = segment.get(ValueLayout.JAVA_SHORT, offset);
@@ -74,10 +80,11 @@ public final class NativeArray<T> {
         return componentType.cast(value);
     }
 
+    /** Writes {@code value} to the element at {@code index}. */
     public void set(int index, T value) {
         checkIndex(index);
 
-        if (value == null) {
+        if (value == null && componentType != MemorySegment.class) {
             throw new IllegalArgumentException("Array value cannot be null");
         }
 
@@ -85,7 +92,7 @@ public final class NativeArray<T> {
 
         if (componentType.isAnnotationPresent(
                 io.github.fassionfruit.annotation.structure.NativeStructure.class
-        )) {
+        ) || componentType.isAnnotationPresent(NativeUnion.class)) {
             MemorySegment source = NativeStructureHandler.getSegment(value);
 
             MemorySegment.copy(
@@ -99,7 +106,13 @@ public final class NativeArray<T> {
             return;
         }
 
-        if (componentType == Byte.class) {
+        if (componentType == MemorySegment.class) {
+            segment.set(
+                    ValueLayout.ADDRESS,
+                    offset,
+                    value == null ? MemorySegment.NULL : (MemorySegment) value
+            );
+        } else if (componentType == Byte.class) {
             segment.set(ValueLayout.JAVA_BYTE, offset, (Byte) value);
         } else if (componentType == Short.class) {
             segment.set(ValueLayout.JAVA_SHORT, offset, (Short) value);
