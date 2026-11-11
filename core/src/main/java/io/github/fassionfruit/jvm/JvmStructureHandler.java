@@ -16,6 +16,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.List;
 
+/** Exports Java implementations as native-callable vtable structures. */
 public final class JvmStructureHandler {
 
     private static final Linker LINKER = Linker.nativeLinker();
@@ -25,6 +26,7 @@ public final class JvmStructureHandler {
     private JvmStructureHandler() {
     }
 
+    /** Allocates and populates a vtable structure in the supplied arena. */
     public static <T> MemorySegment export(
             Class<T> type,
             T implementation,

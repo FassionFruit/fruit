@@ -1,12 +1,15 @@
 package io.github.fassionfruit.structure;
 
 import io.github.fassionfruit.annotation.structure.NativeField;
+import io.github.fassionfruit.annotation.NativeCallback;
+import io.github.fassionfruit.annotation.NativePointer;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.annotation.structure.NativeUnion;
+import io.github.fassionfruit.internal.NativeTypeMapper;
 
 import java.lang.foreign.GroupLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
-import java.lang.foreign.ValueLayout;
 import java.lang.foreign.MemoryLayout.PathElement;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -16,11 +19,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/** Builds and queries layouts for annotated native structures and unions. */
 public final class NativeStructureLayout {
 
     private NativeStructureLayout() {
     }
 
+    /** Creates the ABI layout for a native structure or union interface. */
     public static GroupLayout create(Class<?> type) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(
@@ -28,9 +33,12 @@ public final class NativeStructureLayout {
             );
         }
 
-        if (!type.isAnnotationPresent(NativeStructure.class)) {
+        boolean structure = type.isAnnotationPresent(NativeStructure.class);
+        boolean union = type.isAnnotationPresent(NativeUnion.class);
+
+        if (!structure && !union) {
             throw new IllegalArgumentException(
-                    type.getName() + " is missing @NativeStructure"
+                    type.getName() + " is missing @NativeStructure or @NativeUnion"
             );
         }
 
@@ -57,9 +65,24 @@ public final class NativeStructureLayout {
             Class<?> elementType = getElementType(method);
             int length = annotation.length();
 
+            if (method.isAnnotationPresent(NativePointer.class)
+                    && fieldType != MemorySegment.class) {
+                throw new IllegalArgumentException(
+                        "@NativePointer requires MemorySegment: " + name
+                );
+            }
+
             if (fieldType == NativeArray.class && length <= 0) {
                 throw new IllegalArgumentException(
                         "NativeArray length must be greater than zero: " + name
+                );
+            }
+
+            if (fieldType == NativeArray.class
+                    && (elementType == String.class
+                    || elementType.isAnnotationPresent(NativeCallback.class))) {
+                throw new IllegalArgumentException(
+                        "Unsupported NativeArray component type: " + name
                 );
             }
 
@@ -106,6 +129,19 @@ public final class NativeStructureLayout {
 
         List<MemoryLayout> layouts = new ArrayList<>();
 
+        if (union) {
+            MemoryLayout[] unionLayouts = orderedFields.stream()
+                    .map(field -> field.type() == NativeArray.class
+                            ? MemoryLayout.sequenceLayout(
+                                    field.length(),
+                                    map(field.elementType())
+                            ).withName(field.name())
+                            : map(field.type()).withName(field.name()))
+                    .toArray(MemoryLayout[]::new);
+
+            return MemoryLayout.unionLayout(unionLayouts);
+        }
+
         long offset = 0;
         long maxAlignment = 1;
 
@@ -146,44 +182,35 @@ public final class NativeStructureLayout {
         ).withByteAlignment(maxAlignment);
     }
 
+    /** Returns the byte offset of a named structure or union member. */
     public static long offset(Class<?> type, String fieldName) {
         return create(type).byteOffset(
                 PathElement.groupElement(fieldName)
         );
     }
 
+    /** Returns the layout of a named structure or union member. */
     public static MemoryLayout fieldLayout(Class<?> type, String fieldName) {
         return create(type).select(
                 PathElement.groupElement(fieldName)
         );
     }
 
+    /** Maps a Java field type to its inline native memory layout. */
     public static MemoryLayout map(Class<?> type) {
-        if (type == String.class || type == MemorySegment.class) {
-            return ValueLayout.ADDRESS;
+        if (type.isAnnotationPresent(NativeCallback.class)) {
+            throw new IllegalArgumentException(
+                    "Native callbacks are only supported as function values: "
+                            + type.getName()
+            );
         }
 
-        if (type.isAnnotationPresent(NativeStructure.class)) {
+        if (type.isAnnotationPresent(NativeStructure.class)
+                || type.isAnnotationPresent(NativeUnion.class)) {
             return create(type);
         }
 
-        if (type.isEnum()) return ValueLayout.JAVA_INT;
-        if (type == byte.class || type == Byte.class) return ValueLayout.JAVA_BYTE;
-        if (type == short.class || type == Short.class
-                || type == char.class || type == Character.class) {
-            return ValueLayout.JAVA_SHORT;
-        }
-        if (type == int.class || type == Integer.class
-                || type == boolean.class || type == Boolean.class) {
-            return ValueLayout.JAVA_INT;
-        }
-        if (type == long.class || type == Long.class) return ValueLayout.JAVA_LONG;
-        if (type == float.class || type == Float.class) return ValueLayout.JAVA_FLOAT;
-        if (type == double.class || type == Double.class) return ValueLayout.JAVA_DOUBLE;
-
-        throw new IllegalArgumentException(
-                "Unsupported structure field type: " + type.getName()
-        );
+        return NativeTypeMapper.map(type);
     }
 
     private static void validateMethod(Method method) {

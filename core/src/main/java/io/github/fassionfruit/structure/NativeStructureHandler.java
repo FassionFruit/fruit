@@ -1,8 +1,10 @@
 package io.github.fassionfruit.structure;
 
 import io.github.fassionfruit.annotation.NativeEnumValue;
+import io.github.fassionfruit.annotation.NativePointer;
 import io.github.fassionfruit.annotation.structure.NativeField;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.annotation.structure.NativeUnion;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -15,6 +17,7 @@ import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Map;
 
+/** Provides proxy-backed getter and setter access to native memory. */
 public final class NativeStructureHandler implements InvocationHandler {
 
     private static final long MAX_STRING_BYTES = 1024 * 1024;
@@ -63,15 +66,19 @@ public final class NativeStructureHandler implements InvocationHandler {
                     fieldType,
                     elementType,
                     annotation.length(),
+                    !method.isAnnotationPresent(NativePointer.class)
+                            || method.getAnnotation(NativePointer.class).nullable(),
                     method.getParameterCount() == 1
             ));
         }
     }
 
+    /** Creates a proxy over an existing native structure or union segment. */
     public static <T> T create(Class<T> type, MemorySegment segment) {
         return create(type, segment, Arena.ofAuto());
     }
 
+    /** Creates a proxy and uses the supplied arena for string field storage. */
     public static <T> T create(
             Class<T> type,
             MemorySegment segment,
@@ -83,9 +90,10 @@ public final class NativeStructureHandler implements InvocationHandler {
             );
         }
 
-        if (!type.isAnnotationPresent(NativeStructure.class)) {
+        if (!type.isAnnotationPresent(NativeStructure.class)
+                && !type.isAnnotationPresent(NativeUnion.class)) {
             throw new IllegalArgumentException(
-                    type.getName() + " is missing @NativeStructure"
+                    type.getName() + " is missing @NativeStructure or @NativeUnion"
             );
         }
 
@@ -96,6 +104,7 @@ public final class NativeStructureHandler implements InvocationHandler {
         ));
     }
 
+    /** Returns the native segment backing a structure or union proxy. */
     public static MemorySegment getSegment(Object proxy) {
         if (proxy == null || !Proxy.isProxyClass(proxy.getClass())) {
             throw new IllegalArgumentException(
@@ -153,6 +162,12 @@ public final class NativeStructureHandler implements InvocationHandler {
         }
 
         if (fieldType == MemorySegment.class) {
+            if (value == null && !field.nullable()) {
+                throw new IllegalArgumentException(
+                        "Pointer field cannot be null: " + field.name()
+                );
+            }
+
             MemorySegment pointer = value == null
                     ? MemorySegment.NULL
                     : (MemorySegment) value;
@@ -161,7 +176,8 @@ public final class NativeStructureHandler implements InvocationHandler {
             return;
         }
 
-        if (fieldType.isAnnotationPresent(NativeStructure.class)) {
+        if (fieldType.isAnnotationPresent(NativeStructure.class)
+                || fieldType.isAnnotationPresent(NativeUnion.class)) {
             if (value == null) {
                 throw new IllegalArgumentException(
                         "Nested structure cannot be null: " + field.name()
@@ -178,43 +194,43 @@ public final class NativeStructureHandler implements InvocationHandler {
             return;
         }
 
-        if (fieldType == byte.class) {
-            segment.set(ValueLayout.JAVA_BYTE, offset, (byte) value);
+        if (fieldType == byte.class || fieldType == Byte.class) {
+            segment.set(ValueLayout.JAVA_BYTE, offset, ((Number) value).byteValue());
             return;
         }
 
-        if (fieldType == short.class) {
-            segment.set(ValueLayout.JAVA_SHORT, offset, (short) value);
+        if (fieldType == short.class || fieldType == Short.class) {
+            segment.set(ValueLayout.JAVA_SHORT, offset, ((Number) value).shortValue());
             return;
         }
 
-        if (fieldType == char.class) {
-            segment.set(ValueLayout.JAVA_SHORT, offset, (short) ((char) value));
+        if (fieldType == char.class || fieldType == Character.class) {
+            segment.set(ValueLayout.JAVA_SHORT, offset, (short) ((Character) value).charValue());
             return;
         }
 
-        if (fieldType == int.class) {
-            segment.set(ValueLayout.JAVA_INT, offset, (int) value);
+        if (fieldType == int.class || fieldType == Integer.class) {
+            segment.set(ValueLayout.JAVA_INT, offset, ((Number) value).intValue());
             return;
         }
 
-        if (fieldType == boolean.class) {
-            segment.set(ValueLayout.JAVA_INT, offset, (boolean) value ? 1 : 0);
+        if (fieldType == boolean.class || fieldType == Boolean.class) {
+            segment.set(ValueLayout.JAVA_INT, offset, (Boolean) value ? 1 : 0);
             return;
         }
 
-        if (fieldType == long.class) {
-            segment.set(ValueLayout.JAVA_LONG, offset, (long) value);
+        if (fieldType == long.class || fieldType == Long.class) {
+            segment.set(ValueLayout.JAVA_LONG, offset, ((Number) value).longValue());
             return;
         }
 
-        if (fieldType == float.class) {
-            segment.set(ValueLayout.JAVA_FLOAT, offset, (float) value);
+        if (fieldType == float.class || fieldType == Float.class) {
+            segment.set(ValueLayout.JAVA_FLOAT, offset, ((Number) value).floatValue());
             return;
         }
 
-        if (fieldType == double.class) {
-            segment.set(ValueLayout.JAVA_DOUBLE, offset, (double) value);
+        if (fieldType == double.class || fieldType == Double.class) {
+            segment.set(ValueLayout.JAVA_DOUBLE, offset, ((Number) value).doubleValue());
             return;
         }
 
@@ -264,7 +280,8 @@ public final class NativeStructureHandler implements InvocationHandler {
             );
         }
 
-        if (fieldType.isAnnotationPresent(NativeStructure.class)) {
+        if (fieldType.isAnnotationPresent(NativeStructure.class)
+                || fieldType.isAnnotationPresent(NativeUnion.class)) {
             long size = NativeStructureLayout.create(fieldType).byteSize();
 
             return create(
@@ -329,6 +346,7 @@ public final class NativeStructureHandler implements InvocationHandler {
             Class<?> type,
             Class<?> elementType,
             int length,
+            boolean nullable,
             boolean setter
     ) {
     }

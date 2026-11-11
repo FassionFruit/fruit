@@ -8,6 +8,8 @@ import org.gradle.kotlin.dsl.create
 rootProject.group = "io.github.fassionfruit"
 rootProject.version = "0.3.0"
 
+val publishedModules = setOf(":api", ":core")
+
 subprojects {
 
     plugins.withId("java") {
@@ -19,13 +21,15 @@ subprojects {
             withSourcesJar()
         }
 
-        apply(plugin = "maven-publish")
+        if (path in publishedModules) {
+            apply(plugin = "maven-publish")
 
-        plugins.withId("maven-publish") {
-            extensions.configure<PublishingExtension> {
-                publications {
-                    create<MavenPublication>("mavenJava") {
-                        from(components["java"])
+            plugins.withId("maven-publish") {
+                extensions.configure<PublishingExtension> {
+                    publications {
+                        create<MavenPublication>("mavenJava") {
+                            from(components["java"])
+                        }
                     }
                 }
             }

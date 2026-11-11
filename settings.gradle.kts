@@ -19,3 +19,5 @@ plugins {
 include(":core", ":api")
 
 rootProject.name = "fruit"
+
+include("examples")

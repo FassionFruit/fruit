@@ -1,11 +1,13 @@
 .gradle
 build/
+**/target/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
 
 ### IntelliJ IDEA ###
 .idea/
+.openidea/
 *.iws
 *.iml
 *.ipr
@@ -41,4 +43,4 @@ bin/
 ### Mac OS ###
 .DS_Store
 
-*.dll
+**/*.dll

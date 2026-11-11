@@ -14,6 +14,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** Builds the native vtable layout for a {@code @JvmStructure}. */
 public final class JvmStructureLayout {
 
     private static final ConcurrentHashMap<Class<?>, MemoryLayout> CACHE =
@@ -22,6 +23,7 @@ public final class JvmStructureLayout {
     private JvmStructureLayout() {
     }
 
+    /** Creates the vtable layout for a JVM structure interface. */
     public static MemoryLayout create(Class<?> type) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(
@@ -54,6 +56,7 @@ public final class JvmStructureLayout {
         return MemoryLayout.structLayout(layouts);
     }
 
+    /** Returns the ordered abstract methods exported by a JVM structure. */
     public static List<Method> getMethods(Class<?> type) {
         Method[] declaredMethods = type.getMethods();
 

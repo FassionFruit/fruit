@@ -1,6 +1,7 @@
 package io.github.fassionfruit.internal;
 
 import io.github.fassionfruit.annotation.NativeCallback;
+import io.github.fassionfruit.annotation.NativeCritical;
 import io.github.fassionfruit.annotation.NativeErrno;
 import io.github.fassionfruit.annotation.NativeSymbol;
 import io.github.fassionfruit.annotation.structure.NativeField;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
 
+/** Loads native libraries and creates annotation-driven binding proxies. */
 public final class NativeLoader {
 
     private static final Linker LINKER = Linker.nativeLinker();
@@ -33,10 +35,12 @@ public final class NativeLoader {
     private NativeLoader() {
     }
 
+    /** Returns the last errno captured on the current thread. */
     public static int lastErrno() {
         return LAST_ERRNO.get();
     }
 
+    /** Loads {@code libraryName} and binds its symbols to {@code type}. */
     public static <T> T load(Class<T> type, String libraryName) {
         if (!type.isInterface()) {
             throw new IllegalArgumentException(
@@ -44,7 +48,10 @@ public final class NativeLoader {
             );
         }
 
-        Path libraryPath = NativeLibraryResolver.resolve(libraryName);
+        Path libraryPath = NativeLibraryResolver.resolve(
+                libraryName,
+                type.getClassLoader()
+        );
         Arena arena = Arena.ofAuto();
 
         SymbolLookup lookup;
@@ -202,10 +209,23 @@ public final class NativeLoader {
 
             Class<?>[] parameterTypes = method.getParameterTypes();
             boolean captureErrno = method.isAnnotationPresent(NativeErrno.class);
+            boolean critical = method.isAnnotationPresent(NativeCritical.class);
 
-            Linker.Option[] options = captureErrno
-                    ? new Linker.Option[]{Linker.Option.captureCallState("errno")}
-                    : new Linker.Option[0];
+            if (captureErrno && critical) {
+                throw new IllegalArgumentException(
+                        "@NativeCritical cannot be combined with @NativeErrno: "
+                                + method.getName()
+                );
+            }
+
+            Linker.Option[] options;
+            if (captureErrno) {
+                options = new Linker.Option[]{Linker.Option.captureCallState("errno")};
+            } else if (critical) {
+                options = new Linker.Option[]{Linker.Option.critical(false)};
+            } else {
+                options = new Linker.Option[0];
+            }
 
             MethodHandle invoker = LINKER.downcallHandle(
                     symbol,

@@ -3,6 +3,7 @@ package io.github.fassionfruit.internal;
 import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.annotation.structure.NativeUnion;
 import io.github.fassionfruit.structure.NativeStructureHandler;
 import io.github.fassionfruit.structure.NativeStructureLayout;
 
@@ -21,6 +22,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.concurrent.ConcurrentHashMap;
 
+/** Converts Java binding values to and from FFM carrier values. */
 public final class NativeValueConverter {
 
     private static final long MAX_STRING_BYTES = 1024 * 1024;
@@ -33,11 +35,13 @@ public final class NativeValueConverter {
     private NativeValueConverter() {
     }
 
+    /** Converts a Java value to the carrier expected by a native call. */
     public static Object toNative(Class<?> type, Object value, Arena arena) {
         if (value == null) {
             if (type == String.class
                     || type == MemorySegment.class
                     || type.isAnnotationPresent(NativeStructure.class)
+                    || type.isAnnotationPresent(NativeUnion.class)
                     || type.isAnnotationPresent(NativeCallback.class)) {
                 return MemorySegment.NULL;
             }
@@ -59,6 +63,16 @@ public final class NativeValueConverter {
             if (!type.isInstance(value)) {
                 throw new IllegalArgumentException(
                         "Expected native structure: " + type.getName()
+                );
+            }
+
+            return NativeStructureHandler.getSegment(value);
+        }
+
+        if (type.isAnnotationPresent(NativeUnion.class)) {
+            if (!type.isInstance(value)) {
+                throw new IllegalArgumentException(
+                        "Expected native union: " + type.getName()
                 );
             }
 
@@ -88,6 +102,7 @@ public final class NativeValueConverter {
         return value;
     }
 
+    /** Converts a native carrier value to the declared Java type. */
     public static Object fromNative(Class<?> type, Object value) {
         if (type == void.class) return null;
 
@@ -103,6 +118,20 @@ public final class NativeValueConverter {
             MemorySegment structureSegment = segment.reinterpret(size);
 
             return NativeStructureHandler.create(type, structureSegment);
+        }
+
+        if (type.isAnnotationPresent(NativeUnion.class)) {
+            MemorySegment segment = (MemorySegment) value;
+
+            if (segment.address() == 0) {
+                return null;
+            }
+
+            long size = NativeStructureLayout.create(type).byteSize();
+            return NativeStructureHandler.create(
+                    type,
+                    segment.reinterpret(size)
+            );
         }
 
         if (type == String.class) {
