@@ -5,7 +5,12 @@ import io.github.fassionfruit.annotation.NativeEnumValue;
 import io.github.fassionfruit.annotation.NativeErrno;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
+import io.github.fassionfruit.structure.NativeStructureLayout;
 import org.junit.jupiter.api.Test;
+
+import java.lang.foreign.ValueLayout;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @NativeLibrary("../native/test")
 public interface TestLibrary {
@@ -67,4 +72,18 @@ void main() {
 
     RenderMode result = library.setRenderMode(RenderMode.QUALITY);
     assert result == RenderMode.QUALITY;
+}
+
+
+@Test
+void wrapperTypesHaveMatchingLayouts() {
+    assertEquals(
+            ValueLayout.JAVA_INT.byteSize(),
+            NativeStructureLayout.map(Boolean.class).byteSize()
+    );
+
+    assertEquals(
+            ValueLayout.JAVA_BYTE.byteSize(),
+            NativeStructureLayout.map(Byte.class).byteSize()
+    );
 }

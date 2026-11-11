@@ -13,6 +13,7 @@ import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.util.Map;
@@ -132,7 +133,7 @@ public final class NativeLoader {
             if (plan.requiresArena) {
                 try (Arena arena = Arena.ofConfined()) {
                     convertArguments(
-                            parameterTypes,
+                            method.getParameters(),
                             args,
                             nativeArguments,
                             arena
@@ -143,7 +144,7 @@ public final class NativeLoader {
             }
 
             convertArguments(
-                    parameterTypes,
+                    method.getParameters(),
                     args,
                     nativeArguments,
                     null
@@ -153,14 +154,14 @@ public final class NativeLoader {
         }
 
         private void convertArguments(
-                Class<?>[] parameterTypes,
+                Parameter[] parameters,
                 Object[] args,
                 Object[] nativeArguments,
                 Arena arena
         ) {
-            for (int i = 0; i < parameterTypes.length; i++) {
+            for (int i = 0; i < parameters.length; i++) {
                 nativeArguments[i] = NativeValueConverter.toNative(
-                        parameterTypes[i],
+                        parameters[i],
                         args[i],
                         arena
                 );
@@ -191,6 +192,8 @@ public final class NativeLoader {
         }
 
         private InvocationPlan createPlan(Method method) {
+            validateCritical(method);
+
             NativeSymbol annotation = method.getAnnotation(NativeSymbol.class);
 
             if (annotation == null) {
@@ -293,6 +296,28 @@ public final class NativeLoader {
             return type.isPrimitive()
                     && type != boolean.class
                     && type != char.class;
+        }
+    }
+
+    private static void validateCritical(Method method) {
+        if (!method.isAnnotationPresent(NativeCritical.class)) {
+            return;
+        }
+
+        if (method.isAnnotationPresent(NativeErrno.class)) {
+            throw new IllegalArgumentException(
+                    "@NativeCritical cannot be combined with @NativeErrno: "
+                            + method
+            );
+        }
+
+        for (Class<?> parameterType : method.getParameterTypes()) {
+            if (parameterType.isAnnotationPresent(NativeCallback.class)) {
+                throw new IllegalArgumentException(
+                        "Critical downcalls cannot accept native callbacks: "
+                                + method
+                );
+            }
         }
     }
 
