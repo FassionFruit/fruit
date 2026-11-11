@@ -1,21 +1,41 @@
 package io.github.fassionfruit.annotation;
 
+import io.github.fassionfruit.annotation.structure.NativeStructure;
+import io.github.fassionfruit.annotation.structure.NativeUnion;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Documents that a native value is an address.
+ * Marks a native pointer parameter or structure field.
  *
- * <p>Pointer values use {@code MemorySegment} as their Java representation.
- * The annotation is optional because {@code MemorySegment} already maps to an
- * address layout, but it makes pointer intent explicit in public bindings and
- * structure declarations.</p>
+ * <p>This annotation allows the binding to validate whether a null
+ * pointer is permitted.</p>
+ *
+ * <p>When {@code nullable} is {@code false}, passing a null value
+ * results in an {@link IllegalArgumentException}.</p>
+ *
+ * <p>This annotation does not transfer ownership of the referenced
+ * native memory. The caller is responsible for managing its lifetime.</p>
+ *
+ * @see NativeStructure
+ * @see NativeUnion
  */
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.TYPE_USE})
+@Target({
+        ElementType.FIELD,
+        ElementType.METHOD,
+        ElementType.PARAMETER,
+        ElementType.TYPE_USE
+})
 public @interface NativePointer {
-    /** Whether the native pointer may be null. */
+
+    /**
+     * Whether the native pointer may be null.
+     *
+     * @return {@code true} if null pointers are allowed
+     */
     boolean nullable() default true;
 }
