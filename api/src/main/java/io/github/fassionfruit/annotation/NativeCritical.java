@@ -6,11 +6,16 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Requests a critical FFM downcall for the annotated native function.
+ * Requests a critical downcall for the annotated native function.
  *
- * <p>Critical calls are intended for short-running native functions. The
- * native linker may reject a critical call when its descriptor is not
- * eligible for critical invocation.</p>
+ * <p>Critical downcalls are intended for short-running native functions
+ * that do not call back into the JVM or block for extended periods.</p>
+ *
+ * <p>This option cannot be combined with {@link NativeErrno}.</p>
+ *
+ * <p>The native linker may reject unsupported function descriptors.</p>
+ *
+ * @see NativeErrno
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)

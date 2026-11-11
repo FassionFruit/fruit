@@ -6,7 +6,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.create
 
 rootProject.group = "io.github.fassionfruit"
-rootProject.version = "0.3.0"
+rootProject.version = "0.4.0"
 
 val publishedModules = setOf(":api", ":core")
 
@@ -34,5 +34,13 @@ subprojects {
                 }
             }
         }
+    }
+}
+
+tasks.withType<Javadoc>().configureEach {
+    (options as StandardJavadocDocletOptions).apply {
+        encoding = "UTF-8"
+        docEncoding = "UTF-8"
+        addStringOption("Xdoclint:all", "-quiet")
     }
 }

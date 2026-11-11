@@ -2,6 +2,7 @@ package io.github.fassionfruit.internal;
 
 import io.github.fassionfruit.annotation.NativeCallback;
 import io.github.fassionfruit.annotation.NativeEnumValue;
+import io.github.fassionfruit.annotation.NativePointer;
 import io.github.fassionfruit.annotation.structure.NativeStructure;
 import io.github.fassionfruit.annotation.structure.NativeUnion;
 import io.github.fassionfruit.structure.NativeStructureHandler;
@@ -16,10 +17,7 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
+import java.lang.reflect.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Converts Java binding values to and from FFM carrier values. */
@@ -100,6 +98,31 @@ public final class NativeValueConverter {
         }
 
         return value;
+    }
+
+    public static Object toNative(
+            Parameter parameter,
+            Object value,
+            Arena arena
+    ) {
+        NativePointer pointer = parameter.getAnnotation(
+                NativePointer.class
+        );
+
+        if (pointer != null
+                && !pointer.nullable()
+                && value == null) {
+            throw new IllegalArgumentException(
+                    "Native pointer cannot be null: "
+                            + parameter.getName()
+            );
+        }
+
+        return toNative(
+                parameter.getType(),
+                value,
+                arena
+        );
     }
 
     /** Converts a native carrier value to the declared Java type. */
