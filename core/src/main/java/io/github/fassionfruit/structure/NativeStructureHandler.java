@@ -290,14 +290,30 @@ public final class NativeStructureHandler implements InvocationHandler {
             );
         }
 
-        if (fieldType == byte.class) return segment.get(ValueLayout.JAVA_BYTE, offset);
-        if (fieldType == short.class) return segment.get(ValueLayout.JAVA_SHORT, offset);
-        if (fieldType == char.class) return (char) segment.get(ValueLayout.JAVA_SHORT, offset);
-        if (fieldType == int.class) return segment.get(ValueLayout.JAVA_INT, offset);
-        if (fieldType == boolean.class) return segment.get(ValueLayout.JAVA_INT, offset) != 0;
-        if (fieldType == long.class) return segment.get(ValueLayout.JAVA_LONG, offset);
-        if (fieldType == float.class) return segment.get(ValueLayout.JAVA_FLOAT, offset);
-        if (fieldType == double.class) return segment.get(ValueLayout.JAVA_DOUBLE, offset);
+        if (fieldType == byte.class || fieldType == Byte.class) {
+            return segment.get(ValueLayout.JAVA_BYTE, offset);
+        }
+        if (fieldType == short.class || fieldType == Short.class) {
+            return segment.get(ValueLayout.JAVA_SHORT, offset);
+        }
+        if (fieldType == char.class || fieldType == Character.class) {
+            return (char) segment.get(ValueLayout.JAVA_SHORT, offset);
+        }
+        if (fieldType == int.class || fieldType == Integer.class) {
+            return segment.get(ValueLayout.JAVA_INT, offset);
+        }
+        if (fieldType == boolean.class || fieldType == Boolean.class) {
+            return segment.get(ValueLayout.JAVA_INT, offset) != 0;
+        }
+        if (fieldType == long.class || fieldType == Long.class) {
+            return segment.get(ValueLayout.JAVA_LONG, offset);
+        }
+        if (fieldType == float.class || fieldType == Float.class) {
+            return segment.get(ValueLayout.JAVA_FLOAT, offset);
+        }
+        if (fieldType == double.class || fieldType == Double.class) {
+            return segment.get(ValueLayout.JAVA_DOUBLE, offset);
+        }
 
         if (fieldType.isEnum()) {
             int value = segment.get(ValueLayout.JAVA_INT, offset);
