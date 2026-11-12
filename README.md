@@ -43,8 +43,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.fassionfruit.fruit:core:latest_version")
-    implementation("com.github.fassionfruit.fruit:api:latest_version")
+    implementation("com.github.fassionfruit:fruitlatest_version")
 }
 ```
 
