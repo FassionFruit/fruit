@@ -1,4 +1,5 @@
 #include <math.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct {
@@ -60,4 +61,24 @@ float calculate_data_sum(Data* data) {
     }
 
     return sum;
+}
+
+#pragma pack(push, 1)
+struct PackedData {
+    char a;
+    int b;
+    short c;
+};
+#pragma pack(pop)
+
+size_t packed_size(void) {
+    return sizeof(struct PackedData);
+}
+
+size_t packed_offset_b(void) {
+    return offsetof(struct PackedData, b);
+}
+
+size_t packed_offset_c(void) {
+    return offsetof(struct PackedData, c);
 }

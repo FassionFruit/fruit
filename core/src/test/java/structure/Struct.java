@@ -8,6 +8,11 @@ import io.github.fassionfruit.structure.NativeStructureHandler;
 import io.github.fassionfruit.structure.NativeStructureLayout;
 import org.junit.jupiter.api.Test;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.GroupLayout;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @NativeStructure
@@ -72,8 +77,32 @@ interface Polygon {
     float calculateSum(Polygon polygon);
 }
 
+@NativeStructure(packed = true)
+public interface PackedData {
+    @NativeField(value = "a", order = 0)
+    byte getA();
+
+    @NativeField(value = "b", order = 1)
+    int getB();
+
+    @NativeField(value = "c", order = 2)
+    short getC();
+}
+
+@NativeLibrary("../native/struct")
+public interface StructLibrary {
+    @NativeSymbol("packed_size")
+    int packedSize();
+
+    @NativeSymbol("packed_offset_b")
+    int packedOffsetB();
+
+    @NativeSymbol("packed_offset_c")
+    int packedOffsetC();
+}
+
 @Test
-void main() {
+void structure_test() {
     System.out.println("========[Structure]========");
     try (Arena arena = Arena.ofConfined()) {
         var vector = FFM.allocateStructure(Vector3d.class, arena);
@@ -145,6 +174,18 @@ void main() {
         assertEquals(0, data.getValues().address());
         assertEquals(null, data.getName());
     }
+
+    try (Arena arena = Arena.ofConfined()) {
+        var library = FFM.load(StructLibrary.class);
+        var data = FFM.allocateStructure(PackedData.class, arena);
+
+        assert library.packedSize() == 7;
+        assert NativeStructureLayout.create(PackedData.class).byteSize() == library.packedSize();
+
+        assert NativeStructureLayout.offset(PackedData.class, "a") == 0;
+        assert NativeStructureLayout.offset(PackedData.class, "b") == library.packedOffsetB();
+        assert NativeStructureLayout.offset(PackedData.class, "c") == library.packedOffsetC();
+    }
 }
 
 @NativeStructure
@@ -172,4 +213,7 @@ public interface Data {
 
     @NativeField(value = "name", order = 3)
     void setName(String name);
+}
+
+void main() {
 }

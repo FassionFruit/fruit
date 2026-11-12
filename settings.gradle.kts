@@ -20,4 +20,4 @@ include(":core", ":api")
 
 rootProject.name = "fruit"
 
-//include("examples")
+include("examples")

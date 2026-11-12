@@ -35,6 +35,7 @@ public final class NativeStructureLayout {
 
         boolean structure = type.isAnnotationPresent(NativeStructure.class);
         boolean union = type.isAnnotationPresent(NativeUnion.class);
+        boolean packed = structure && type.getAnnotation(NativeStructure.class).packed();
 
         if (!structure && !union) {
             throw new IllegalArgumentException(
@@ -157,7 +158,10 @@ public final class NativeStructureLayout {
                 layout = map(field.type());
             }
 
-            long alignment = layout.byteAlignment();
+            long alignment = packed ? 1 : layout.byteAlignment();
+
+            layout = layout.withByteAlignment(alignment);
+
             long padding = (alignment - offset % alignment) % alignment;
 
             if (padding > 0) {
@@ -265,6 +269,10 @@ public final class NativeStructureLayout {
         }
 
         return elementType;
+    }
+
+    private static long alignUp(long offset, long alignment) {
+        return ((offset + alignment - 1) / alignment) * alignment;
     }
 
     private record FieldInfo(
