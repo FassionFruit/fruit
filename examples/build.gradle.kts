@@ -27,12 +27,10 @@ val toolchainHome = javaToolchains.launcherFor(java.toolchain)
     .map { it.metadata.installationPath.asFile.absolutePath }
 
 val cmakeConfigure = tasks.register<Exec>("cmakeConfigure") {
-    description = ""
+    description = "Configure the native example with CMake"
     workingDir = file("native")
     commandLine("cmake", "-S", ".", "-B", "build", "-DCMAKE_BUILD_TYPE=Release")
-    doFirst {
-        environment("JAVA_HOME", toolchainHome.get())
-    }
+    environment("JAVA_HOME", toolchainHome.get())
 }
 
 val cmakeBuild = tasks.register<Exec>("cmakeBuild") {
@@ -71,3 +69,18 @@ tasks.named<ProcessResources>("processResources") {
         into("native")
     }
 }
+
+tasks.matching { it.name.startsWith("publish") }.configureEach {
+    enabled = false
+}
+
+val isExamplesExplicitlyRequested = gradle.startParameter.taskNames.any {
+    it.contains("examples", ignoreCase = true)
+}
+
+if (!isExamplesExplicitlyRequested) {
+    tasks.matching { !it.name.startsWith("publish") }.configureEach {
+        enabled = false
+    }
+}
+
