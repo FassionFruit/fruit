@@ -3,7 +3,7 @@ import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("java")
-    id("io.github.fassionfruit")
+//    id("io.github.fassionfruit")
 }
 
 group = "io.github.fassionfruit"
@@ -19,19 +19,19 @@ dependencies {
     implementation(project(":core"))
 }
 
-
-fassionfruit {
-    native {
-        sourceDirectory.set(
-            layout.projectDirectory.dir("native")
-        )
-
-        build {
-            system.set(NativeBuildSystem.AUTO)
-            profile.set("Release")
-        }
-    }
-}
+//
+//fassionfruit {
+//    native {
+//        sourceDirectory.set(
+//            layout.projectDirectory.dir("native")
+//        )
+//
+//        build {
+//            system.set(NativeBuildSystem.AUTO)
+//            profile.set("Release")
+//        }
+//    }
+//}
 
 //val osName = System.getProperty("os.name").lowercase()
 //val libExtension = when {
