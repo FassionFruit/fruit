@@ -8,6 +8,11 @@ plugins {
 group = rootProject.group
 version = rootProject.version
 
+repositories {
+    mavenCentral()
+    gradlePluginPortal()
+}
+
 gradlePlugin {
     website = "https://github.com/FassionFruit/fruit"
     vcsUrl = "https://github.com/FassionFruit/fruit"

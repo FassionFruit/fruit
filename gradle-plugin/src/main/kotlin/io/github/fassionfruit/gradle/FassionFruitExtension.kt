@@ -1,11 +1,12 @@
 package io.github.fassionfruit.gradle
 
+import org.gradle.api.Action
+import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.Project
 import javax.inject.Inject
 
 open class FassionFruitExtension @Inject constructor(
@@ -17,6 +18,10 @@ open class FassionFruitExtension @Inject constructor(
         objects,
         project
     )
+
+    fun native(action: Action<NativeExtension>) {
+        action.execute(native)
+    }
 }
 
 open class NativeExtension @Inject constructor(
@@ -39,6 +44,10 @@ open class NativeExtension @Inject constructor(
         NativeBuildOptions::class.java,
         objects
     )
+
+    fun build(action: Action<NativeBuildOptions>) {
+        action.execute(build)
+    }
 }
 
 open class NativeBuildOptions @Inject constructor(

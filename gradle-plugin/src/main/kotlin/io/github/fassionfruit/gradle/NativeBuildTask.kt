@@ -224,6 +224,10 @@ abstract class NativeBuildTask @Inject constructor(
         execOperations.exec {
             workingDir(workingDirectory)
             commandLine(commandLine)
+            environment(
+                "JAVA_HOME",
+                System.getProperty("java.home")
+            )
             environment(extraEnvironment)
         }
     }
