@@ -11,12 +11,21 @@ dependencyResolutionManagement {
     }
 }
 
+pluginManagement {
+    includeBuild("gradle-plugin")
+
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+
 plugins {
     // Use the Foojay Toolchains plugin to automatically download JDKs required by subprojects.
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include(":core", ":api")
+include(":core", ":api",/* ":gradle-plugin"*/)
 
 rootProject.name = "fruit"
 
