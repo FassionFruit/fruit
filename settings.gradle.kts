@@ -16,7 +16,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-include(":core", ":api")
+include(":core", ":api", ":gradle-plugin")
 
 rootProject.name = "fruit"
 
