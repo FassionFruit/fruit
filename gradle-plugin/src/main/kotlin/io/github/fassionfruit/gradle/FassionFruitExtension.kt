@@ -45,8 +45,17 @@ open class NativeExtension @Inject constructor(
         objects
     )
 
+    val packaging = objects.newInstance(
+        NativePackagingOptions::class.java,
+        objects
+    )
+
     fun build(action: Action<NativeBuildOptions>) {
         action.execute(build)
+    }
+
+    fun packaging(action: Action<NativePackagingOptions>) {
+        action.execute(packaging)
     }
 }
 
@@ -76,4 +85,16 @@ open class NativeBuildOptions @Inject constructor(
     val target: Property<String> =
         objects.property(String::class.java)
             .convention("")
+}
+
+open class NativePackagingOptions @Inject constructor(
+    objects: ObjectFactory
+) {
+    val os: Property<String> =
+        objects.property(String::class.java)
+            .convention(System.getProperty("os.name"))
+
+    val architecture: Property<String> =
+        objects.property(String::class.java)
+            .convention(System.getProperty("os.arch"))
 }

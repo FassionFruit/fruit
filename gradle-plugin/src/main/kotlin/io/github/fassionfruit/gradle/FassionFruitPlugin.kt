@@ -1,3 +1,4 @@
+
 package io.github.fassionfruit.gradle
 
 import org.gradle.api.Plugin
@@ -14,6 +15,14 @@ class FassionFruitPlugin : Plugin<Project> {
             project
         )
 
+        fun hasNativeProject(): Boolean {
+            val source = extension.native.sourceDirectory.get().asFile
+
+            if (!source.isDirectory) return false
+
+            return source.walkTopDown().any { it.isFile }
+        }
+
         val nativeBuild = project.tasks.register(
             "fassionfruitNativeBuild",
             NativeBuildTask::class.java
@@ -23,6 +32,7 @@ class FassionFruitPlugin : Plugin<Project> {
 
             sourceDirectory.set(extension.native.sourceDirectory)
             sourceFiles.from(extension.native.sourceDirectory)
+
             outputDirectory.set(extension.native.outputDirectory)
             buildDirectory.set(extension.native.buildDirectory)
 
@@ -32,6 +42,10 @@ class FassionFruitPlugin : Plugin<Project> {
             arguments.set(extension.native.build.arguments)
             environment.set(extension.native.build.environment)
             target.set(extension.native.build.target)
+
+            onlyIf("Native project is not empty") {
+                hasNativeProject()
+            }
         }
 
         val packageNative = project.tasks.register(
@@ -44,17 +58,7 @@ class FassionFruitPlugin : Plugin<Project> {
             dependsOn(nativeBuild)
 
             inputDirectory.set(extension.native.outputDirectory)
-
-            nativeFiles.from(
-                project.fileTree(extension.native.outputDirectory) {
-                    include(
-                        "**/*.dll",
-                        "**/*.so",
-                        "**/*.so.*",
-                        "**/*.dylib"
-                    )
-                }
-            )
+            targetTriple.set(extension.native.build.target)
 
             outputDirectory.set(
                 project.layout.buildDirectory.dir(
@@ -70,9 +74,7 @@ class FassionFruitPlugin : Plugin<Project> {
             ).configure {
                 dependsOn(packageNative)
 
-                from(packageNative.flatMap { task ->
-                    task.outputDirectory
-                }) {
+                from(packageNative.flatMap { it.outputDirectory }) {
                     into("META-INF/fassionfruit/native")
                 }
             }

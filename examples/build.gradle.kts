@@ -1,5 +1,4 @@
 import io.github.fassionfruit.gradle.NativeBuildSystem
-import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("java")
@@ -29,6 +28,11 @@ fassionfruit {
         build {
             system.set(NativeBuildSystem.AUTO)
             profile.set("Release")
+        }
+
+        packaging {
+            os.set("linux")
+            architecture.set("x86_64")
         }
     }
 }
