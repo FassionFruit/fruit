@@ -22,7 +22,7 @@ dependencies {
 fassionfruit {
     native {
         sourceDirectory.set(
-            layout.projectDirectory.dir("example/native")
+            layout.projectDirectory.dir("native")
         )
 
         build {
