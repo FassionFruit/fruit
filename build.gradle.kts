@@ -10,6 +10,11 @@ rootProject.version = "0.4.0"
 
 val publishedModules = setOf(":api", ":core")
 
+allprojects {
+    group = rootProject.group
+    version = rootProject.version
+}
+
 subprojects {
 
     plugins.withId("java") {
