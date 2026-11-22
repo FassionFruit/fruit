@@ -1,5 +1,4 @@
 import io.github.fassionfruit.gradle.NativeBuildSystem
-import org.gradle.language.jvm.tasks.ProcessResources
 
 plugins {
     id("java")
@@ -23,12 +22,17 @@ dependencies {
 fassionfruit {
     native {
         sourceDirectory.set(
-            layout.projectDirectory.dir("native")
+            layout.projectDirectory.dir("example/native")
         )
 
         build {
             system.set(NativeBuildSystem.AUTO)
             profile.set("Release")
+        }
+
+        packaging {
+            os.set("linux")
+            architecture.set("x86_64")
         }
     }
 }

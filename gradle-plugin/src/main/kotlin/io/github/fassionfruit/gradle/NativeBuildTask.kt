@@ -50,16 +50,16 @@ abstract class NativeBuildTask @Inject constructor(
     @TaskAction
     fun buildNative() {
         val source = sourceDirectory.get().asFile
-
-        if (!source.isDirectory) {
-            logger.lifecycle("Native source directory not found: $source")
-            return
-        }
-
         val output = outputDirectory.get().asFile
         val build = buildDirectory.get().asFile
 
         output.deleteRecursively()
+
+        if (!source.isDirectory || source.walkTopDown().none { it.isFile }) {
+            logger.lifecycle("FassionFruit: no native sources found, skipping native build")
+            return
+        }
+
         output.mkdirs()
         build.mkdirs()
 
@@ -99,7 +99,8 @@ abstract class NativeBuildTask @Inject constructor(
         }
 
         throw GradleException(
-            "Cannot detect native build system in $source"
+            "Native sources exist in $source, but no supported build system was detected. " +
+                    "Add CMakeLists.txt, Cargo.toml, Makefile, or configure a custom command."
         )
     }
 
@@ -109,7 +110,7 @@ abstract class NativeBuildTask @Inject constructor(
         output: File
     ) {
         if (!File(source, "CMakeLists.txt").isFile) {
-            throw GradleException("CMakeLists.txt not found")
+            throw GradleException("CMakeLists.txt not found in $source")
         }
 
         val outputPath = output.absolutePath
@@ -151,7 +152,7 @@ abstract class NativeBuildTask @Inject constructor(
         output: File
     ) {
         if (!File(source, "Cargo.toml").isFile) {
-            throw GradleException("Cargo.toml not found")
+            throw GradleException("Cargo.toml not found in $source")
         }
 
         val env = environment.get().toMutableMap()
@@ -188,8 +189,7 @@ abstract class NativeBuildTask @Inject constructor(
 
         args.addAll(arguments.get())
 
-        val env = buildEnvironment(output)
-        execute(source, args, env)
+        execute(source, args, buildEnvironment(output))
     }
 
     private fun buildWithCustomCommand(
@@ -224,10 +224,7 @@ abstract class NativeBuildTask @Inject constructor(
         execOperations.exec {
             workingDir(workingDirectory)
             commandLine(commandLine)
-            environment(
-                "JAVA_HOME",
-                System.getProperty("java.home")
-            )
+            environment("JAVA_HOME", System.getProperty("java.home"))
             environment(extraEnvironment)
         }
     }
