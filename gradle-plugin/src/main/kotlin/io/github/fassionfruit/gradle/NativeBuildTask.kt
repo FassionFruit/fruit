@@ -177,11 +177,15 @@ abstract class NativeBuildTask @Inject constructor(
                     mapOf("name" to name, "symbol" to name, "abi" to "C", "return" to returnType, "parameters" to parameters)
                 }
 
-            val typedefNames = collectNodes(root, setOf("TypedefDecl")).mapNotNull { typedef ->
-                val name = typedef["name"] as? String ?: return@mapNotNull null
-                val tag = findOwnedTagId(typedef) ?: return@mapNotNull null
-                tag to name
-            }.toMap()
+            val typedefNames = linkedMapOf<String, String>()
+
+            collectNodes(root, setOf("TypedefDecl")).forEach { typedef ->
+                val name = typedef["name"] as? String ?: return@forEach
+
+                collectTagReferenceIds(typedef).forEach { tagId ->
+                    typedefNames.putIfAbsent(tagId, name)
+                }
+            }
             val structures = collectNodes(root, setOf("RecordDecl", "CXXRecordDecl"))
                 .mapNotNull { node ->
                     if (node["completeDefinition"] != true || node["isImplicit"] == true) return@mapNotNull null
@@ -265,15 +269,23 @@ abstract class NativeBuildTask @Inject constructor(
         }
     }
 
-    private fun findOwnedTagId(node: Map<*, *>): String? {
+    private fun collectTagReferenceIds(node: Map<*, *>): Set<String> {
+        val result = linkedSetOf<String>()
+
+        val ownedTag = node["ownedTagDecl"] as? Map<*, *>
+        (ownedTag?.get("id") as? String)?.let(result::add)
+
+        val declaration = node["decl"] as? Map<*, *>
+        if ((declaration?.get("kind") as? String) in setOf("RecordDecl", "CXXRecordDecl")) {
+            (declaration?.get("id") as? String)?.let(result::add)
+        }
+
         (node["inner"] as? List<*>)?.forEach { child ->
             val childNode = child as? Map<*, *> ?: return@forEach
-            val ownedTag = childNode["ownedTagDecl"] as? Map<*, *>
-            val id = ownedTag?.get("id") as? String
-            if (id != null) return id
-            findOwnedTagId(childNode)?.let { return it }
+            result.addAll(collectTagReferenceIds(childNode))
         }
-        return null
+
+        return result
     }
 
     private fun collectNodes(node: Map<*, *>, kinds: Set<String>): List<Map<*, *>> {

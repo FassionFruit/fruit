@@ -1,3 +1,4 @@
+
 package io.github.fassionfruit.gradle
 
 import org.gradle.api.Action
@@ -19,6 +20,12 @@ open class FassionFruitExtension @Inject constructor(
         project
     )
 
+    val bindingSourceDirectory: DirectoryProperty =
+        objects.directoryProperty()
+            .convention(
+                project.layout.projectDirectory.dir("src/nativeBindings/java")
+            )
+
     fun native(action: Action<NativeExtension>) {
         action.execute(native)
     }
@@ -30,17 +37,23 @@ open class NativeExtension @Inject constructor(
 ) {
     val sourceDirectory: DirectoryProperty =
         objects.directoryProperty()
-            .convention(project.layout.projectDirectory.dir("native"))
+            .convention(
+                project.layout.projectDirectory.dir("native")
+            )
 
     val additionalSourceDirectories = objects.fileCollection()
 
     val outputDirectory: DirectoryProperty =
         objects.directoryProperty()
-            .convention(project.layout.buildDirectory.dir("fassionfruit/native"))
+            .convention(
+                project.layout.buildDirectory.dir("fassionfruit/native")
+            )
 
     val buildDirectory: DirectoryProperty =
         objects.directoryProperty()
-            .convention(project.layout.buildDirectory.dir("fassionfruit/native-build"))
+            .convention(
+                project.layout.buildDirectory.dir("fassionfruit/native-build")
+            )
 
     val build = objects.newInstance(
         NativeBuildOptions::class.java,
@@ -89,8 +102,10 @@ open class NativeBuildOptions @Inject constructor(
             .convention("clang")
 
     val environment: MapProperty<String, String> =
-        objects.mapProperty(String::class.java, String::class.java)
-            .convention(emptyMap())
+        objects.mapProperty(
+            String::class.java,
+            String::class.java
+        ).convention(emptyMap())
 
     val target: Property<String> =
         objects.property(String::class.java)

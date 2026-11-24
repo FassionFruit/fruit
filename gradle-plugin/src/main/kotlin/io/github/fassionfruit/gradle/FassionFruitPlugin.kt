@@ -3,15 +3,10 @@ package io.github.fassionfruit.gradle
 
 import org.gradle.api.Plugin
 import org.gradle.api.Project
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.language.jvm.tasks.ProcessResources
-import java.io.File
-
-private fun isAutoBindingDeclaration(file: File): Boolean {
-    val source = file.readText()
-    return Regex(
-        """@NativeLibrary\s*\(\s*(?:value\s*=\s*)?"[^"]+"\s*\)\s*(?:(?:public|protected|private|static|final|abstract|sealed|non-sealed)\s+)*class\s+[A-Za-z_$][A-Za-z0-9_$]*\s*\{\s*}"""
-    ).containsMatchIn(source)
-}
+import org.gradle.plugins.ide.idea.model.IdeaModel
 
 class FassionFruitPlugin : Plugin<Project> {
 
@@ -23,13 +18,18 @@ class FassionFruitPlugin : Plugin<Project> {
             project
         )
 
+        val generatedBindingsDirectory =
+            project.layout.buildDirectory.dir(
+                "generated/sources/fassionfruit/main/java"
+            )
+
         fun hasNativeProject(): Boolean {
             val source = extension.native.sourceDirectory.get().asFile
 
             return (source.isDirectory && source.walkTopDown().any { it.isFile }) ||
-                extension.native.additionalSourceDirectories.files.any { directory ->
-                    directory.isDirectory && directory.walkTopDown().any { it.isFile }
-                }
+                    extension.native.additionalSourceDirectories.files.any { directory ->
+                        directory.isDirectory && directory.walkTopDown().any { it.isFile }
+                    }
         }
 
         val nativeBuild = project.tasks.register(
@@ -94,47 +94,52 @@ class FassionFruitPlugin : Plugin<Project> {
         ) {
             group = "fassionfruit"
             description = "Generates static Java bindings from native metadata"
+
             dependsOn(nativeBuild)
-            val mainSources = project.fileTree("src/main")
-            mainSources.include("**/*.java", "**/*.kt")
-            sourceFiles.from(mainSources)
-            metadataFiles.from(extension.native.outputDirectory.map { directory ->
-                project.fileTree(directory.asFile).apply {
-                    include("**/*.ffm.json")
-                }
-            })
-            outputDirectory.set(
-                project.layout.buildDirectory.dir("generated/sources/fassionfruit/main/java")
-            )
+
+            sourceFiles.from(extension.bindingSourceDirectory)
+            metadataFiles.from(extension.native.outputDirectory)
+            outputDirectory.set(generatedBindingsDirectory)
         }
 
         project.plugins.withId("org.jetbrains.kotlin.jvm") {
-            project.tasks.matching { it.name == "compileKotlin" }.configureEach {
+            project.tasks.matching {
+                it.name == "compileKotlin"
+            }.configureEach {
                 dependsOn(generateBindings)
             }
         }
 
         project.plugins.withId("java") {
             val sourceSets = project.extensions.getByType(
-                org.gradle.api.tasks.SourceSetContainer::class.java
+                SourceSetContainer::class.java
             )
-            val mainSourcePath = project.layout.projectDirectory.dir("src/main")
-                .asFile.absoluteFile.toPath().normalize().toString()
+
+            val generatedSources = generateBindings.flatMap {
+                it.outputDirectory
+            }
 
             sourceSets.named("main") {
-                java.srcDir(generateBindings.flatMap { it.outputDirectory })
-                java.exclude { element ->
-                    val file = element.file
-                    val path = file.absoluteFile.toPath().normalize().toString()
-                    path.startsWith(mainSourcePath) &&
-                        file.extension == "java" && isAutoBindingDeclaration(file)
-                }
+                java.srcDir(generatedSources)
             }
 
             project.tasks.named(
                 "compileJava",
-                org.gradle.api.tasks.compile.JavaCompile::class.java
+                JavaCompile::class.java
             ).configure {
+                dependsOn(generateBindings)
+            }
+
+            project.tasks.named(
+                "compileTestJava",
+                JavaCompile::class.java
+            ).configure {
+                dependsOn(generateBindings)
+            }
+
+            project.tasks.matching {
+                it.name == "sourcesJar"
+            }.configureEach {
                 dependsOn(generateBindings)
             }
 

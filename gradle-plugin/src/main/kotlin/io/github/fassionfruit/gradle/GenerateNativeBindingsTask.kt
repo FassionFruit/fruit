@@ -317,9 +317,17 @@ abstract class GenerateNativeBindingsTask : DefaultTask() {
     ): String? {
         if (type.startsWith("pointer<")) {
             val pointee = type.removePrefix("pointer<").removeSuffix(">")
-            if (allowPointerStructure && pointee.startsWith("struct:")) {
+            if (pointee.startsWith("struct:")) {
                 val name = pointee.removePrefix("struct:")
-                if (structures.containsKey(name)) return safeIdentifier(name)
+                if (allowPointerStructure && structures.containsKey(name)) {
+                    return safeIdentifier(name)
+                }
+                if (allowPointerStructure) {
+                    throw GradleException(
+                        "Missing structure metadata for '$name'. " +
+                                "The native metadata must describe every structure used by a function."
+                    )
+                }
             }
             return "java.lang.foreign.MemorySegment"
         }

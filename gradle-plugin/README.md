@@ -26,11 +26,9 @@ Apply the plugin in your `build.gradle.kts`:
 ```kotlin
 plugins {
     java
-    id("io.github.fassionfruit") version "0.4.0"
+    id("io.github.fassionfruit") version "0.5.0"
 }
 ```
-
-Replace `0.5.0` with the version you want to use.
 
 ## Project Structure
 

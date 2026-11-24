@@ -1,7 +1,6 @@
 package examples.rust;
 
 import io.github.fassionfruit.FFM;
-
 import java.lang.foreign.Arena;
 
 public final class AutoBindingExample {
