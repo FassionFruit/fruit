@@ -8,6 +8,7 @@ import org.gradle.api.tasks.SourceSetContainer
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.language.jvm.tasks.ProcessResources
 import org.gradle.plugins.ide.idea.model.IdeaModel
+import org.jetbrains.gradle.ext.IdeaExtPlugin
 import org.jetbrains.gradle.ext.ProjectSettings
 import org.jetbrains.gradle.ext.TaskTriggersConfig
 
@@ -159,14 +160,10 @@ class FassionFruitPlugin : Plugin<Project> {
         }
 
         val rootProject = project.rootProject
-
-        rootProject.pluginManager.apply("org.jetbrains.gradle.plugin.idea-ext")
-
+        rootProject.plugins.apply(IdeaExtPlugin::class.java)
         val ideaModel = rootProject.extensions.getByType(IdeaModel::class.java)
-
         val projectSettings = (ideaModel.project as ExtensionAware)
             .extensions.getByName("settings") as ProjectSettings
-
         val taskTriggers = (projectSettings as ExtensionAware)
             .extensions.getByName("taskTriggers") as TaskTriggersConfig
 

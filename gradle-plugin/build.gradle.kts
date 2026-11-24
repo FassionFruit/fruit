@@ -2,7 +2,7 @@ plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
     id("com.gradle.plugin-publish") version "2.2.1"
-//    id("org.jetbrains.gradle.plugin.idea-ext") version "1.4.1"
+    id("org.jetbrains.gradle.plugin.idea-ext") version "1.4.1"
 }
 
 
@@ -15,7 +15,9 @@ repositories {
 }
 
 dependencies {
-    implementation("gradle.plugin.org.jetbrains.gradle.plugin.idea-ext:gradle-idea-ext:1.4.1")
+    implementation(
+        "org.jetbrains.gradle.plugin.idea-ext:org.jetbrains.gradle.plugin.idea-ext.gradle.plugin:1.4.1"
+    )
 }
 
 gradlePlugin {
