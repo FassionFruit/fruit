@@ -30,12 +30,12 @@ abstract class GenerateNativeBindingsTask : DefaultTask() {
         output.deleteRecursively()
         output.mkdirs()
 
-        val declarations = sourceFiles.files
+        val declarations = sourceFiles.asFileTree.files
             .filter { it.isFile && it.extension in setOf("java", "kt") }
             .sortedBy { it.absolutePath }
             .mapNotNull(::findDeclaration)
 
-        val metadata = metadataFiles.files
+        val metadata = metadataFiles.asFileTree.files
             .filter { it.isFile && it.extension.equals("json", true) }
             .sortedBy { it.absolutePath }
             .flatMap(::readMetadata)

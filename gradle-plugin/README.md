@@ -44,6 +44,8 @@ your-project/
 ├── src/
 │   └── main/
 │       └── java/
+│   └── nativeBindings
+│       └── java/
 ├── build.gradle.kts
 └── settings.gradle.kts
 ```
