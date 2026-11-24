@@ -17,4 +17,28 @@ tasks.test {
         showStandardStreams = true
         events("passed", "failed", "skipped")
     }
+
+    dependsOn(buildNativeTestLibraries)
+}
+
+val nativeTestSources = fileTree("../native") {
+    include("*.c")
+}
+
+val buildNativeTestLibraries = nativeTestSources.files.map { source ->
+    tasks.register<Exec>("buildNativeTest${source.nameWithoutExtension.replaceFirstChar { it.uppercase() }}") {
+        val output = source.resolveSibling("${source.nameWithoutExtension}.so")
+
+        inputs.file(source)
+        outputs.file(output)
+
+        commandLine(
+            "gcc",
+            "-shared",
+            "-fPIC",
+            source,
+            "-o",
+            output.absolutePath
+        )
+    }
 }

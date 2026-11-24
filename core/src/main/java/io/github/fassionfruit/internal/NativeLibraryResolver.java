@@ -59,10 +59,14 @@ public final class NativeLibraryResolver {
             }
         }
 
-        String resourceName = "native/" + resolvedName;
-        InputStream resource = classLoader == null
-                ? ClassLoader.getSystemResourceAsStream(resourceName)
-                : classLoader.getResourceAsStream(resourceName);
+        String platformResource = "META-INF/fassionfruit/native/"
+                + platformDirectory() + "/" + Path.of(resolvedName).getFileName();
+        String legacyResource = "native/" + resolvedName;
+        InputStream resource = getResource(classLoader, platformResource);
+
+        if (resource == null) {
+            resource = getResource(classLoader, legacyResource);
+        }
 
         if (resource != null) {
             return extractResource(
@@ -74,6 +78,33 @@ public final class NativeLibraryResolver {
         throw new IllegalArgumentException(
                 "Native library not found: " + resolvedName
         );
+    }
+
+
+    private static InputStream getResource(ClassLoader classLoader, String name) {
+        return classLoader == null
+                ? ClassLoader.getSystemResourceAsStream(name)
+                : classLoader.getResourceAsStream(name);
+    }
+
+    private static String platformDirectory() {
+        String os = OS;
+        if (os.contains("mac") || os.contains("darwin")) {
+            os = "macos";
+        } else if (os.contains("win")) {
+            os = "windows";
+        } else if (os.contains("linux") || os.contains("unix")) {
+            os = "linux";
+        }
+
+        String architecture = System.getProperty("os.arch").toLowerCase();
+        architecture = switch (architecture) {
+            case "amd64", "x64" -> "x86_64";
+            case "arm64" -> "aarch64";
+            default -> architecture;
+        };
+
+        return os + "-" + architecture;
     }
 
     private static Path extractResource(InputStream resource, String fileName) {
@@ -94,16 +125,16 @@ public final class NativeLibraryResolver {
     }
 
     private static String addPlatformName(String name, boolean explicitPath) {
-        if (OS.contains("win")) {
-            return name + ".dll";
-        }
-
         if (OS.contains("mac") || OS.contains("darwin")) {
             if (!explicitPath && !name.substring(name.lastIndexOf('/') + 1).startsWith("lib")) {
                 name = addLibPrefix(name);
             }
 
             return name + ".dylib";
+        }
+
+        if (OS.contains("win")) {
+            return name + ".dll";
         }
 
         if (OS.contains("linux") || OS.contains("unix") || OS.contains("bsd")) {

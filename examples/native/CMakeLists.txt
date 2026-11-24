@@ -8,23 +8,5 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-if(NOT JAVA_HOME)
-    set(JAVA_HOME $ENV{JAVA_HOME})
-endif()
-if(NOT JAVA_HOME)
-    message(FATAL_ERROR "JAVA_HOME is not set (pass -DJAVA_HOME=<jdk> or set the environment variable)")
-endif()
-
-if(WIN32)
-    set(JNI_OS win32)
-elseif(APPLE)
-    set(JNI_OS darwin)
-else()
-    set(JNI_OS linux)
-endif()
-
 add_library(native_example SHARED native_example.c)
-target_include_directories(native_example PRIVATE ${JAVA_HOME}/include ${JAVA_HOME}/include/${JNI_OS})
-set_target_properties(native_example PROPERTIES PREFIX "" C_VISIBILITY_PRESET hidden)
-
 add_executable(standalone standalone.c)

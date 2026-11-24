@@ -30,8 +30,6 @@ plugins {
 }
 ```
 
-Replace `0.5.0` with the version you want to use.
-
 ## Project Structure
 
 The plugin uses the `native/` directory as the default native source directory.
@@ -45,6 +43,8 @@ your-project/
 │       └── lib.rs
 ├── src/
 │   └── main/
+│       └── java/
+│   └── nativeBindings
 │       └── java/
 ├── build.gradle.kts
 └── settings.gradle.kts
@@ -61,7 +61,7 @@ import io.github.fassionfruit.gradle.NativeBuildSystem
 
 plugins {
     java
-    id("io.github.fassionfruit") version "0.5.0"
+    id("io.github.fassionfruit") version "0.4.0"
 }
 
 fassionfruit {
@@ -136,6 +136,62 @@ cp target/release/libexample.so \
 
 Make sure your custom build command places the resulting shared libraries in `FASSIONFRUIT_OUTPUT_DIR`.
 
+
+## Native auto-binding
+
+An empty Java class annotated with `@NativeLibrary` is replaced at compile time by a generated class exposing public static methods. The generated methods delegate to the existing FFM interface loader, so the runtime still uses Java FFM and does not use JNI.
+
+```java
+package example;
+
+import io.github.fassionfruit.annotation.NativeLibrary;
+
+@NativeLibrary("native_example_rust")
+public final class RustExample {
+}
+```
+
+After applying the plugin, the generated API can be called directly from Java or Kotlin:
+
+```java
+int result = RustExample.add(10, 20);
+```
+
+The default `native/` directory is built automatically. Additional native projects can be registered without replacing the default directory:
+
+```kotlin
+fassionfruit {
+    native {
+        additionalSourceDirectories.from(layout.projectDirectory.dir("native-rust"))
+    }
+}
+```
+
+### Metadata generation
+
+- Rust projects use a Cargo `build.rs` generator. It reads `#[no_mangle] pub extern "C"` functions with `syn` and writes language-independent `*.ffm.json` metadata into `FASSIONFRUIT_METADATA_DIR`.
+- C and C++ projects use Clang's JSON AST (`clang -Xclang -ast-dump=json`). The plugin associates source files listed in CMake `add_library(...)` declarations with their library targets. C++ functions must have C linkage (`extern "C"`) so the exported symbol is unambiguous.
+- The metadata records the library, C ABI/calling convention, target and pointer width, exported symbol, Java-facing method name, return type, parameter names/types, and source-derived structure/union fields and fixed array lengths. Function signatures are read from source ASTs, never guessed from binary symbols.
+
+Auto-generated methods currently support `void`, 8/16/32/64-bit integers, `float`, `double`, C strings, raw pointers, C-compatible structures/unions, and one-dimensional fixed-size structure arrays. Structure and union interfaces are generated from source metadata and can be allocated with `FFM.allocateStructure(...)`. Platform-dependent C `long`, callbacks, bitfields, custom alignment, and by-value aggregate function parameters are rejected rather than assigned an incorrect ABI. Use `FFM.load(...)` with `@NativeSymbol` and the existing structure annotations for unsupported signatures.
+
+The annotated declaration itself must be an empty Java class. Kotlin source can call the generated Java static API; Kotlin classes cannot currently be used as the annotated declaration. Clang must be available on `PATH` for C/C++ metadata extraction. Configure a custom executable or extra include/define arguments when needed:
+
+```kotlin
+fassionfruit {
+    native {
+        build {
+            clangCommand.set("clang")
+            clangArguments.set(listOf("-Inative/include", "-DMY_FEATURE=1"))
+        }
+    }
+}
+```
+
+Rust metadata generation requires Cargo and the Rust dependencies declared by the crate's build script.
+
+The generation task is `fassionfruitGenerateBindings`; it runs as part of Java compilation. Native binaries are packaged under `META-INF/fassionfruit/native/<os>-<architecture>/` and extracted by the FassionFruit runtime when loaded from a JAR. Source-derived metadata is packaged under `META-INF/fassionfruit/metadata/`.
+
 ## Build Tasks
 
 The plugin registers the following Gradle tasks:
@@ -143,7 +199,8 @@ The plugin registers the following Gradle tasks:
 | Task | Description |
 |---|---|
 | `fassionfruitNativeBuild` | Builds native libraries |
-| `fassionfruitPackageNative` | Prepares native binaries for packaging |
+| `fassionfruitPackageNative` | Packages native binaries and metadata |
+| `fassionfruitGenerateBindings` | Generates Java static binding classes from metadata |
 
 The native packaging task is integrated with the Java `processResources` task.
 
@@ -158,10 +215,10 @@ You can build and package everything with:
 Native libraries are packaged under:
 
 ```text
-META-INF/fassionfruit/native/
+META-INF/fassionfruit/
 ```
 
-The resulting JAR contains the native binaries produced by the configured build system.
+The resulting JAR contains platform-specific native binaries and source-derived metadata.
 
 Example:
 
@@ -169,8 +226,13 @@ Example:
 your-application.jar
 └── META-INF/
     └── fassionfruit/
+        ├── metadata/
+        │   ├── native_example.ffm.json
+        │   └── native_example_rust.ffm.json
         └── native/
-            └── libexample.so
+            └── linux-x86_64/
+                ├── libnative_example.so
+                └── libnative_example_rust.so
 ```
 
 ## Supported Native Libraries

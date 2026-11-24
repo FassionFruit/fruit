@@ -2,15 +2,22 @@ plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
     id("com.gradle.plugin-publish") version "2.2.1"
+    id("org.jetbrains.gradle.plugin.idea-ext") version "1.4.1"
 }
 
 
 group = "io.github.fassionfruit"
-version = "0.4.0"
+version = "0.5.0"
 
 repositories {
     mavenCentral()
     gradlePluginPortal()
+}
+
+dependencies {
+    implementation(
+        "org.jetbrains.gradle.plugin.idea-ext:org.jetbrains.gradle.plugin.idea-ext.gradle.plugin:1.4.1"
+    )
 }
 
 gradlePlugin {
