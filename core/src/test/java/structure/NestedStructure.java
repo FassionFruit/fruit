@@ -1,3 +1,5 @@
+package structure;
+
 import io.github.fassionfruit.FFM;
 import io.github.fassionfruit.annotation.NativeLibrary;
 import io.github.fassionfruit.annotation.NativeSymbol;
@@ -10,7 +12,7 @@ import java.lang.foreign.Arena;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @NativeStructure
-public interface Vector2 {
+interface Vector2 {
 
     @NativeField(value = "x", order = 0)
     float getX();
@@ -26,7 +28,7 @@ public interface Vector2 {
 }
 
 @NativeStructure
-public interface Entity {
+interface Entity {
 
     @NativeField(value = "position", order = 0)
     Vector2 getPosition();
@@ -42,7 +44,7 @@ public interface Entity {
 }
 
 @NativeLibrary("../native/entity")
-public interface EntityNativeLibrary {
+interface EntityNativeLibrary {
 
     @NativeSymbol("initialize_entity")
     void initializeEntity(Entity entity);
@@ -63,7 +65,8 @@ public interface EntityNativeLibrary {
     long getVelocityOffset();
 }
 
-public class NestedStructureAbiTest {
+public class NestedStructure {
+    @Test
     void shouldShareNativeMemoryWithC() {
         var library = FFM.load(EntityNativeLibrary.class);
 
@@ -135,10 +138,4 @@ public class NestedStructureAbiTest {
             System.out.println("Java velocity offset: " + javaVelocityOffset);
         }
     }
-}
-
-@Test
-void main() {
-    var str = new NestedStructureAbiTest();
-    str.shouldShareNativeMemoryWithC();
 }
