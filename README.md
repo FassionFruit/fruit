@@ -2,6 +2,7 @@
 # FassionFruit
 
 [![CI](https://github.com/FassionFruit/fruit/actions/workflows/ci.yml/badge.svg)](https://github.com/FassionFruit/fruit/actions/workflows/ci.yml)
+![Maven Central Version](https://img.shields.io/maven-central/v/io.github.fassionfruit/core)
 ![GitHub License](https://img.shields.io/github/license/FassionFruit/Fruit)
 
 **A lightweight, annotation-driven binding library for Java's FFM.**
