@@ -5,6 +5,11 @@ import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.create
 
+plugins {
+    `maven-publish`
+    signing
+}
+
 rootProject.group = "io.github.fassionfruit"
 rootProject.version = "0.5.0"
 
@@ -16,7 +21,6 @@ allprojects {
 }
 
 subprojects {
-
     plugins.withId("java") {
         extensions.configure<JavaPluginExtension> {
             toolchain {
