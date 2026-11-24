@@ -56,3 +56,15 @@ int native_apply(int (*callback)(int), int value) {
 int native_mode(int mode) {
     return mode;
 }
+
+typedef struct {
+    int values[3];
+} IntArray;
+
+int native_array_sum(const IntArray *array) {
+    if (array == NULL) {
+        return 0;
+    }
+
+    return array->values[0] + array->values[1] + array->values[2];
+}

@@ -32,15 +32,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install native build tools
+        run: sudo apt-get update && sudo apt-get install -y clang cmake
+
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
-
-      - name: Build native libraries
-        run: |
-          find native -type f -name "*.c" -print0 | while IFS= read -r -d '' file; do
-            output="${file%.c}.so"
-            gcc -shared -fPIC "$file" -o "$output"
-          done
 
       - name: Build and test
         run: ./gradlew build

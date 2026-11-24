@@ -88,6 +88,24 @@ System.out.println(result);
 
 FassionFruit handles the binding process internally, allowing you to call native functions through ordinary Java interface methods.
 
+## Native Auto-Binding
+
+The Gradle plugin can generate static Java methods from native source metadata. Declare an empty Java class with `@NativeLibrary`; the plugin builds the native project, extracts exported C/Rust function signatures, and generates methods such as `RustExample.add(10, 20)`. Java and Kotlin callers can use the generated static API.
+
+```java
+@NativeLibrary("native_example_rust")
+public final class RustExample {
+}
+
+int result = RustExample.add(10, 20);
+```
+
+Rust metadata is generated from `#[no_mangle] pub extern "C"` declarations using `syn`. C/C++ metadata is extracted from Clang's JSON AST; C++ exports must use `extern "C"`. The metadata is source-derived and language-independent. JNI is not used.
+
+Auto-binding currently supports scalar integers, floating-point values, C strings, raw pointers, C-compatible structures/unions, and one-dimensional fixed-size structure arrays. Generated structure interfaces work with `FFM.allocateStructure(...)`. Callbacks, bitfields, custom alignment, platform-dependent C `long`, and by-value aggregate function parameters are not auto-generated; use the existing `FFM.load(...)`, `@NativeSymbol`, and structure annotations for those signatures. The annotated declaration must be an empty Java class. Kotlin can consume generated Java bindings, but a Kotlin class cannot yet be the annotated declaration.
+
+See [the Gradle plugin guide](gradle-plugin/README.md) for setup and configuration.
+
 ## Requirements
 
 - JDK 25

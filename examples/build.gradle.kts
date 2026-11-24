@@ -10,97 +10,29 @@ version = rootProject.version
 
 repositories {
     mavenCentral()
-    maven("https://jitpack.io/")
 }
 
 dependencies {
-//    implementation(project(":api"))
     implementation(project(":core"))
+
+    testImplementation(platform("org.junit:junit-bom:6.1.3"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+tasks.test {
+    useJUnitPlatform()
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
+}
 
 fassionfruit {
     native {
-        sourceDirectory.set(
-            layout.projectDirectory.dir("native")
-        )
+        sourceDirectory.set(layout.projectDirectory.dir("native"))
+        additionalSourceDirectories.from(layout.projectDirectory.dir("native-rust"))
 
         build {
             system.set(NativeBuildSystem.AUTO)
             profile.set("Release")
         }
-
-        packaging {
-            os.set("linux")
-            architecture.set("x86_64")
-        }
     }
 }
-
-//val osName = System.getProperty("os.name").lowercase()
-//val libExtension = when {
-//    osName.contains("win") -> "dll"
-//    osName.contains("mac") -> "dylib"
-//    else -> "so"
-//}
-//val toolchainHome = javaToolchains.launcherFor(java.toolchain)
-//    .map { it.metadata.installationPath.asFile.absolutePath }
-//
-//val cmakeConfigure = tasks.register<Exec>("cmakeConfigure") {
-//    description = "Configure the native example with CMake"
-//    workingDir = file("native")
-//    commandLine("cmake", "-S", ".", "-B", "build", "-DCMAKE_BUILD_TYPE=Release")
-//    environment("JAVA_HOME", toolchainHome.get())
-//}
-//
-//val cmakeBuild = tasks.register<Exec>("cmakeBuild") {
-//    description = "Build the native example"
-//    dependsOn(cmakeConfigure)
-//    workingDir = file("native")
-//    commandLine("cmake", "--build", "build", "--config", "Release")
-//}
-//
-//val cargoBuild = tasks.register<Exec>("cargoBuild") {
-//    description = "Builds the Rust native example."
-//    workingDir = file("native-rust")
-//    commandLine("cargo", "build", "--release")
-//}
-//
-//val nativeLibraryName = when {
-//    osName.contains("win") -> "native_example.dll"
-//    osName.contains("mac") -> "native_example.dylib"
-//    else -> "native_example.so"
-//}
-//
-//val rustLibraryName = when {
-//    osName.contains("win") -> "native_example_rust.dll"
-//    osName.contains("mac") -> "libnative_example_rust.dylib"
-//    else -> "libnative_example_rust.so"
-//}
-//
-//tasks.named<ProcessResources>("processResources") {
-//    dependsOn(cmakeBuild, cargoBuild)
-//
-//    from(file("native/out/$nativeLibraryName")) {
-//        into("native")
-//    }
-//
-//    from(file("native-rust/target/release/$rustLibraryName")) {
-//        into("native")
-//    }
-//}
-//
-//tasks.matching { it.name.startsWith("publish") }.configureEach {
-//    enabled = false
-//}
-//
-//val isExamplesExplicitlyRequested = gradle.startParameter.taskNames.any {
-//    it.contains("examples", ignoreCase = true)
-//}
-//
-//if (!isExamplesExplicitlyRequested) {
-//    tasks.matching { !it.name.startsWith("publish") }.configureEach {
-//        enabled = false
-//    }
-//}
-//

@@ -24,6 +24,12 @@ abstract class PackageNativeTask : DefaultTask() {
     @get:Input
     abstract val targetTriple: Property<String>
 
+    @get:Input
+    abstract val targetOs: Property<String>
+
+    @get:Input
+    abstract val targetArchitecture: Property<String>
+
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
@@ -43,7 +49,12 @@ abstract class PackageNativeTask : DefaultTask() {
             )
         }
 
-        val (os, architecture) = detectPlatform(targetTriple.get())
+        val (os, architecture) = if (targetTriple.get().isBlank() &&
+            targetOs.get().isNotBlank() && targetArchitecture.get().isNotBlank()) {
+            normalizePlatform(targetOs.get(), targetArchitecture.get())
+        } else {
+            detectPlatform(targetTriple.get())
+        }
         val platform = "$os-$architecture"
 
         val libraries = Files.walk(inputRoot).use { paths ->
@@ -88,9 +99,11 @@ abstract class PackageNativeTask : DefaultTask() {
             outputRoot.toFile().deleteRecursively()
         }
 
-        val platformDirectory = outputRoot.resolve(platform)
+        val platformDirectory = outputRoot.resolve("native").resolve(platform)
+        val metadataDirectory = outputRoot.resolve("metadata")
 
         Files.createDirectories(platformDirectory)
+        Files.createDirectories(metadataDirectory)
 
         libraries.forEach { library ->
             val destination = platformDirectory.resolve(
@@ -108,8 +121,30 @@ abstract class PackageNativeTask : DefaultTask() {
             )
         }
 
+        val metadataFiles = Files.walk(inputRoot).use { paths ->
+            paths
+                .filter { Files.isRegularFile(it) }
+                .filter { it.fileName.toString().endsWith(".ffm.json", true) }
+                .toList()
+        }
+        val duplicateMetadata = metadataFiles.groupBy { it.fileName.toString() }
+            .filterValues { it.size > 1 }
+        if (duplicateMetadata.isNotEmpty()) {
+            throw GradleException(
+                "Duplicate FassionFruit metadata files: ${duplicateMetadata.keys.joinToString()}"
+            )
+        }
+        metadataFiles.forEach { metadata ->
+            Files.copy(
+                metadata,
+                metadataDirectory.resolve(metadata.fileName),
+                StandardCopyOption.REPLACE_EXISTING
+            )
+            logger.lifecycle("FassionFruit: packaged metadata ${metadata.fileName}")
+        }
+
         logger.lifecycle(
-            "FassionFruit: packaged ${libraries.size} native libraries for $platform"
+            "FassionFruit: packaged ${libraries.size} native libraries and ${metadataFiles.size} metadata file(s) for $platform"
         )
     }
 
@@ -123,6 +158,25 @@ abstract class PackageNativeTask : DefaultTask() {
             Regex(""".*\.so\..+""").matches(name) -> true
             else -> false
         }
+    }
+
+    private fun normalizePlatform(osValue: String, architectureValue: String): Pair<String, String> {
+        val normalizedOs = osValue.trim().lowercase()
+        val os = when {
+            normalizedOs.contains("mac") || normalizedOs.contains("darwin") -> "macos"
+            normalizedOs.contains("win") -> "windows"
+            normalizedOs.contains("linux") -> "linux"
+            else -> throw GradleException("Unsupported native target OS: $osValue")
+        }
+        val architecture = when (architectureValue.trim().lowercase()) {
+            "amd64", "x86_64", "x64" -> "x86_64"
+            "aarch64", "arm64" -> "aarch64"
+            "i386", "i486", "i586", "i686", "x86" -> "x86"
+            "arm", "arm32", "armv7" -> "arm"
+            "riscv64" -> "riscv64"
+            else -> throw GradleException("Unsupported native target architecture: $architectureValue")
+        }
+        return os to architecture
     }
 
     private fun detectPlatform(target: String): Pair<String, String> {

@@ -32,6 +32,8 @@ open class NativeExtension @Inject constructor(
         objects.directoryProperty()
             .convention(project.layout.projectDirectory.dir("native"))
 
+    val additionalSourceDirectories = objects.fileCollection()
+
     val outputDirectory: DirectoryProperty =
         objects.directoryProperty()
             .convention(project.layout.buildDirectory.dir("fassionfruit/native"))
@@ -77,6 +79,14 @@ open class NativeBuildOptions @Inject constructor(
     val arguments: ListProperty<String> =
         objects.listProperty(String::class.java)
             .convention(emptyList())
+
+    val clangArguments: ListProperty<String> =
+        objects.listProperty(String::class.java)
+            .convention(emptyList())
+
+    val clangCommand: Property<String> =
+        objects.property(String::class.java)
+            .convention("clang")
 
     val environment: MapProperty<String, String> =
         objects.mapProperty(String::class.java, String::class.java)

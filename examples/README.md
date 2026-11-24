@@ -1,13 +1,6 @@
 # Examples
 
-Build the C example library first:
-
-```bash
-cmake -S native -B native/build -DCMAKE_BUILD_TYPE=Release
-cmake --build native/build --config Release
-```
-
-The Java examples are grouped by the FassionFruit feature they demonstrate:
+The examples project demonstrates the FassionFruit APIs and the native auto-binding Gradle workflow.
 
 - `examples.basic`: primitive values and enums
 - `examples.strings`: native strings
@@ -17,39 +10,35 @@ The Java examples are grouped by the FassionFruit feature they demonstrate:
 - `examples.callbacks`: Java callbacks called from C
 - `examples.critical`: short critical downcalls
 
-Build the examples JAR to build both native libraries and package them inside
-the JAR:
+## Native auto-binding
+
+The `native/` CMake project and `native-rust/` Cargo project are built automatically. `RustExample` and `CExample` are empty Java classes annotated with `@NativeLibrary`; the Gradle plugin generates their static methods and C-compatible structure/union interfaces from Clang and Rust AST metadata.
+
+```java
+System.out.println(RustExample.add(10, 20));
+System.out.println(RustExample.multiply(6, 7));
+System.out.println(RustExample.subtract(30, 12));
+System.out.println(RustExample.get_version());
+```
+
+Build and test the generated bindings:
 
 ```bash
+./gradlew :examples:compileJava
+./gradlew :examples:test
 ./gradlew :examples:jar
 ```
 
-`FFM.load()` extracts a packaged native library to a temporary file before
-loading it. For running directly from compiled classes instead, add the native
-output directories to `java.library.path`.
+`NativeAutoBindingTest` verifies Rust and C downcalls, strings, structures, unions, and fixed-size arrays. The test task enables Java native access for the FFM linker. The JAR task packages native libraries under `META-INF/fassionfruit/native/<os>-<architecture>/` and metadata under `META-INF/fassionfruit/metadata/`.
 
-The `examples` project is intentionally not included in Maven publications;
-only the `api` and `core` modules are published by the root build.
-
-## Rust
-
-Build the Rust library:
-
-```bash
-cargo build --manifest-path examples/native-rust/Cargo.toml --release
-```
-
-The Gradle `:examples:jar` task runs this Rust build automatically. To run the
-Rust example directly from the build output, add the Rust output directory to
-`java.library.path`:
+For a direct run from compiled classes on Linux, use the generated native output directories:
 
 ```bash
 java \
   --enable-native-access=ALL-UNNAMED \
-  -Djava.library.path=examples/native-rust/target/release \
-  examples.rust.RustExample
+  -Djava.library.path=build/fassionfruit/native:build/fassionfruit/native/cargo-1-native-rust/release \
+  -cp build/classes/java/main:build/resources/main \
+  examples.rust.AutoBindingExample
 ```
 
-Rust structures must use `#[repr(C)]`. On the Java side, declare the matching
-type with `@NativeStructure`; a structure argument is passed to Rust as a
-pointer to that structure.
+The examples project is not included in Maven publications; only `api` and `core` are published by the root build.
