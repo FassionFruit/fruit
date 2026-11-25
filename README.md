@@ -59,7 +59,7 @@ Add JitPack to your repositories:
 
 ```kotlin
 repositories {
-    maven("https://jitpack.io")
+    mavenCentral()
 }
 ```
 
