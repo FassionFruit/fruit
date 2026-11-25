@@ -67,7 +67,8 @@ Add the dependency:
 
 ```kotlin
 dependencies {
-    implementation("com.github.fassionfruit.fruit:core:VERSION")
+    implementation("com.github.fassionfruit:core:VERSION")
+    implementation("com.github.fassionfruit:api:VERSION")
 }
 ```
 
