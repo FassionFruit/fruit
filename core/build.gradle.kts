@@ -3,7 +3,7 @@ import java.util.Properties
 plugins {
     id("buildsrc.convention.java-jvm")
     `java-library`
-    id("eu.kakde.gradle.sonatype-maven-central-publisher") version "1.0.6"
+    id("eu.kakde.gradle.sonatype-maven-central-publisher") version "1.1.0"
 }
 
 dependencies {
