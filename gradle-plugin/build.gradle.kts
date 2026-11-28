@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     `kotlin-dsl`
     `java-gradle-plugin`
@@ -47,4 +49,18 @@ gradlePlugin {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+java.toolchain {
+    languageVersion.set(JavaLanguageVersion.of(25))
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_25)
+    }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(25)
 }

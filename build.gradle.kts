@@ -11,7 +11,7 @@ plugins {
 }
 
 rootProject.group = "io.github.fassionfruit"
-rootProject.version = "0.5.0"
+rootProject.version = "0.5.1"
 
 val publishedModules = setOf(":api", ":core")
 
